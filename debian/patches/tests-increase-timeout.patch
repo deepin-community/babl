@@ -1,0 +1,24 @@
+From: Jeremy Bicha <jbicha@debian.org>
+Date: Sun, 27 Oct 2019 12:53:09 -0400
+Subject: tests: increase timeout to 120 seconds
+
+meson's default test timeout is 30 seconds which is a bit too slow
+for Debian's armel build machine.
+
+https://mesonbuild.com/Reference-manual.html#test
+https://buildd.debian.org/status/logs.php?pkg=babl&arch=armel
+---
+ tests/meson.build | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/tests/meson.build b/tests/meson.build
+index eee8895..e131c14 100644
+--- a/tests/meson.build
++++ b/tests/meson.build
+@@ -51,5 +51,6 @@ foreach test_name : test_names
+     test,
+     env: test_env,
+     workdir: meson.current_build_dir(),
++    timeout: 120,
+   )
+ endforeach

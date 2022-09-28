@@ -1,0 +1,7 @@
+Tests: libbabl-dev
+Depends: build-essential, pkg-config, libbabl-dev
+Restrictions: allow-stderr, superficial
+
+Tests: gir1.2-babl-0.1
+Depends: gir1.2-babl-0.1, python3-gi
+Restrictions: allow-stderr, superficial

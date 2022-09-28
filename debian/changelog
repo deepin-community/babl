@@ -1,0 +1,421 @@
+babl (1:0.1.92-1) UNRELEASED; urgency=medium
+
+  * update
+
+ -- Debian GNOME Maintainers <pkg-gnome-maintainers@lists.alioth.debian.org>  Tue, 24 May 2022 05:47:11 -0400
+
+babl (1:0.1.92-1) unstable; urgency=medium
+
+  * New upstream release
+  * Add patch to fix build with latest meson
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Thu, 24 Mar 2022 15:21:20 -0400
+
+babl (1:0.1.90-1) unstable; urgency=medium
+
+  * New upstream release
+  * debian/rules: Drop unneeded -Wl,--as-needed
+  * debian/libbabl-0.1-0.symbols: Add new symbols
+
+ -- Jeremy Bicha <jeremy.bicha@canonical.com>  Tue, 22 Feb 2022 16:35:14 -0500
+
+babl (1:0.1.88-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sun, 18 Jul 2021 12:57:04 -0400
+
+babl (1:0.1.86-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bicha <jbicha@debian.org>  Fri, 12 Mar 2021 18:21:15 -0500
+
+babl (1:0.1.82-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sun, 04 Oct 2020 21:46:57 -0400
+
+babl (1:0.1.80-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+    - Version some dependencies as per meson.build
+    - d/copyright: Update
+    - Update symbols file
+  * Add an epoch to the version number.
+    This ensures that versions previously shipped by the deb-multimedia
+    third-party apt repository are correctly superseded.
+    (Related to #961993, #962093 and many older reports)
+    - d/source/lintian-overrides: Justify the epoch bump
+  * Add superficial smoke-tests for the library and GIR data
+  * d/libbabl-0.1-0.lintian-overrides: Silence some warnings about plugins.
+    Many of these plugins genuinely don't call into libc, and some don't
+    call into any library code at all (they only do computation), so it's
+    OK that they have no dependencies.
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 26 Aug 2020 10:37:32 +0100
+
+babl (0.1.78-1) unstable; urgency=medium
+
+  * New upstream release
+  * Build-Depend on valac
+  * debian;libbabl-dev.install: Install vala development files
+  * Bump debhelper-compat to 13
+  * Bump Standards-Version to 4.5.0
+  * Update debian/watch
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sat, 13 Jun 2020 11:36:03 -0400
+
+babl (0.1.74-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+
+ -- Andreas Henriksson <andreas@fatal.se>  Sat, 22 Feb 2020 17:53:33 +0100
+
+babl (0.1.72-4) unstable; urgency=medium
+
+  * Source-only upload
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sat, 09 Nov 2019 19:37:31 -0500
+
+babl (0.1.72-3) unstable; urgency=medium
+
+  * Build gir1.2-babl-0.1 package
+
+ -- Jeremy Bicha <jbicha@debian.org>  Wed, 30 Oct 2019 23:12:38 -0400
+
+babl (0.1.72-2) unstable; urgency=medium
+
+  * Build-Depend on debhelper-compat 12 and drop debian/compat
+  * Have libbabl-dev depend on liblcms2-dev as required by updated pkgconfig
+    file. This was detected with the help of the gnome-photos autopkgtest.
+  * Add tests-increase-timeout.patch:
+    - Increase meson timeout limit so that the armel build succeeds
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sun, 27 Oct 2019 12:55:46 -0400
+
+babl (0.1.72-1) unstable; urgency=medium
+
+  [ Jeremy Bicha ]
+  * New upstream release
+  * Build with meson
+  * debian/libbabl-0.1-0.symbols: Add new symbols
+  * Skip installing README for now
+  * Drop disable-float-to-8bit-test.patch: perhaps no longer needed
+  * Bump Standards-Version to 4.4.1
+
+  [ Simon McVittie ]
+  * libbabl-0.1-0.symbols: Bump all minimal versions to 0.1.72
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sat, 26 Oct 2019 15:34:16 -0400
+
+babl (0.1.62-1) unstable; urgency=medium
+
+  * New upstream release
+  * Build-Depend on liblcms2-dev
+  * Build-Depend on dh-sequence-gnome
+  * debian/libbabl-0.1.0.symbols: Add new symbols
+
+ -- Jeremy Bicha <jbicha@debian.org>  Wed, 06 Feb 2019 13:23:03 -0500
+
+babl (0.1.60-2) unstable; urgency=medium
+
+  * Restore -Wl,-O1 to our LDFLAGS
+  * Bump Standards-Version to 4.3.0
+
+ -- Jeremy Bicha <jbicha@debian.org>  Mon, 24 Dec 2018 09:14:34 -0500
+
+babl (0.1.60-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bicha <jbicha@debian.org>  Fri, 16 Nov 2018 20:42:19 -0500
+
+babl (0.1.58-1) unstable; urgency=medium
+
+  [ Jeremy Bicha ]
+  * New upstream release (LP: #1796377)
+  * Bump Standards-Version to 4.2.1
+
+  [ Jelmer Vernooĳ ]
+  * Use secure copyright file specification URI.
+
+ -- Jeremy Bicha <jbicha@debian.org>  Fri, 05 Oct 2018 14:08:01 -0400
+
+babl (0.1.56-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sun, 19 Aug 2018 21:16:16 -0400
+
+babl (0.1.54-1) unstable; urgency=medium
+
+  * New upstream release
+  * Add new symbols
+
+ -- Jeremy Bicha <jbicha@debian.org>  Tue, 31 Jul 2018 11:31:38 -0400
+
+babl (0.1.50-1) unstable; urgency=medium
+
+  * New upstream release
+  * Update debian/gbp.conf
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sun, 20 May 2018 22:36:01 -0400
+
+babl (0.1.46-3) unstable; urgency=medium
+
+  * Drop obsolete Breaks/Replaces/Provides not needed for years
+    (Closes: #898053)
+  * Add disable-float-to-8bit-test.patch:
+    - Disable unreliable build test (See #890887)
+  * Stop ignoring test failures on s390x
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sun, 06 May 2018 12:26:42 -0400
+
+babl (0.1.46-2) unstable; urgency=medium
+
+  * Ignore test failures on s390x (See #890887)
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sat, 28 Apr 2018 09:27:16 -0400
+
+babl (0.1.46-1) unstable; urgency=medium
+
+  * New upstream release
+  * Bump Standards-Version to 4.1.4
+
+ -- Jeremy Bicha <jbicha@debian.org>  Wed, 11 Apr 2018 19:48:20 -0400
+
+babl (0.1.44-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bicha <jbicha@debian.org>  Mon, 19 Feb 2018 21:46:10 -0500
+
+babl (0.1.42-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bicha <jbicha@debian.org>  Thu, 25 Jan 2018 22:32:24 -0500
+
+babl (0.1.40-1) unstable; urgency=medium
+
+  * New upstream release
+  * Add new symbol
+  * Update Vcs fields for migration to https://salsa.debian.org/
+  * Add debian/gbp.conf
+  * Bump debhelper compat to 11
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sat, 20 Jan 2018 21:59:45 -0500
+
+babl (0.1.38-1) unstable; urgency=medium
+
+  * New upstream release
+  * Add new symbol
+  * Use dh_install --fail-missing
+
+ -- Jeremy Bicha <jbicha@debian.org>  Wed, 22 Nov 2017 10:01:16 -0500
+
+babl (0.1.34-1) unstable; urgency=medium
+
+  * New upstream release
+  * debian/libbabl-0.1-0.symbols: symbols updated. Some symbols were dropped
+    but they don't appear to cause a problem for babl users in Debian.
+  * Switch from cdbs to dh
+  * Set Debian GNOME team as maintainer & update Vcs fields (Closes: #866873)
+  * Switch to automatic dbgsym packages
+  * Build with all hardening flags
+  * Bump Standards-Version to 4.1.1
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sun, 15 Oct 2017 17:27:12 -0400
+
+babl (0.1.30-1) unstable; urgency=medium
+
+  * QA upload.
+  * New upstream release
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Thu, 31 Aug 2017 22:56:48 +0200
+
+babl (0.1.28-3) unstable; urgency=medium
+
+  * debian/control: orphaning the package
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Sun, 02 Jul 2017 14:14:47 +0200
+
+babl (0.1.28-2) unstable; urgency=medium
+
+  * Upload to unstable
+  * debian/control: S-V bump 3.9.8 => 4.0.0 (no changes needed)
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Thu, 22 Jun 2017 17:18:13 +0200
+
+babl (0.1.28-1) experimental; urgency=medium
+
+  * New upstream release
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Fri, 02 Jun 2017 14:17:00 +0200
+
+babl (0.1.26-1) experimental; urgency=medium
+
+  * New upstream release
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Sat, 27 May 2017 14:38:50 +0200
+
+babl (0.1.24-3) experimental; urgency=medium
+
+  * debian/patches/: patchset dropped
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Tue, 21 Mar 2017 13:35:02 +0100
+
+babl (0.1.24-2) experimental; urgency=medium
+
+  * debian/rules: MMX and SSE support added for amd64.
+    Thanks to Laurent Bigonville (bigon) for the patch. (Closes: #857172)
+  * debian/patches/: patchset updated
+    - 0001-Fix_unaligned_access_on_sparc64.patch added (Closes: #806208)
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Sat, 18 Mar 2017 22:40:55 +0100
+
+babl (0.1.24-1) experimental; urgency=medium
+
+  * New upstream release
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Sat, 18 Feb 2017 14:18:30 +0100
+
+babl (0.1.22-1) experimental; urgency=medium
+
+  * New upstream release
+    - debian/libbabl-0.1-0.symbols: symbols updated
+    - debian/libbabl-doc*: obsolete documentation files dropped
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Sun, 08 Jan 2017 14:41:43 +0100
+
+babl (0.1.18-1) unstable; urgency=medium
+
+  * New upstream release
+  * debian/control: S-V bump 3.9.7 -> 3.9.8 (no changes needed)
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Tue, 21 Jun 2016 22:05:59 +0200
+
+babl (0.1.16-1) unstable; urgency=medium
+
+  * New upstream release
+  * debian/control: -> https:// for Vcs-* fields
+  * debian/control: S-V bump 3.9.6 -> 3.9.7 (no changes needed)
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Mon, 15 Feb 2016 21:23:40 +0100
+
+babl (0.1.14-1) unstable; urgency=medium
+
+  * New upstream release
+    - debian/: debhelper support (>= 9)
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Mon, 23 Nov 2015 12:06:15 +0100
+
+babl (0.1.12-2) unstable; urgency=medium
+
+  * Upload to unstable
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Tue, 28 Apr 2015 16:33:50 +0200
+
+babl (0.1.12-1) experimental; urgency=medium
+
+  * New upstream release
+    - debian/libbabl-0.1-0.symbols: symbols updated
+  * debian/copyright: entries updated
+  * debian/control: S-V bump 3.9.5 => 3.9.6 (no changes needed)
+  * debian/control: Maintainer e-mail address updated
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Fri, 13 Feb 2015 12:39:56 +0100
+
+babl (0.1.10-2) unstable; urgency=medium
+
+  * debian/: dh-autoreconf usage added
+    Thanks to Fernando Seiti Furusato for the patch. (Closes: #754905)
+  * debian/watch: ftp:// => http://
+  * debian/control: Maintainer e-mail address updated
+
+ -- Matteo F. Vescovi <mfvescovi@gmail.com>  Wed, 16 Jul 2014 10:11:27 +0200
+
+babl (0.1.10-1) unstable; urgency=low
+
+  [ Matteo F. Vescovi ]
+  * New upstream release
+    + debian/libbabl-0.1-0.symbols: new symbols added
+    + debian/: gobject introspection disabled.
+      Since it used to fail, upstream decided to remove
+      gobject introspection (commits cf55998 and 8a6eff2).
+      Debian packaging configurations are kept and only
+      commented, hoping this support will be re-enabled
+      in the future.
+  * debian/rules: MMX and SSE support disabled (Closes: #668423)
+
+  [ Jordi Mallach ]
+  * Change license of debian/* to LGPL-3+, to match the upstream code.
+
+ -- Matteo F. Vescovi <mfv.debian@gmail.com>  Sat, 05 May 2012 19:38:35 +0200
+
+babl (0.1.6-2) unstable; urgency=low
+
+  * Upload to unstable
+
+ -- Matteo F. Vescovi <mfv.debian@gmail.com>  Wed, 14 Mar 2012 18:55:56 +0100
+
+babl (0.1.6-1) experimental; urgency=low
+
+  * Initial "0.1.x series" release (Closes: #541170)
+    + doc-base config file added
+    + debian/control: VCS links added
+    + debian/*.symbols: file added
+  * debian/rules: dh_installdocs's exclude instead of rm.
+  * debian/rules: exclude /usr/lib/babl-0.1 from dh_makeshlibs.
+  * GObject Introspection data support added.
+    Thanks to Daniel Schaal for these changes
+  * debian/libbabl-0.1-0.install: paths updated
+  * debian/patches/: removed since no more useful
+  * debian/: renaming .install and adding docs file
+  * debian/libbabl-doc.doc-base: paths updated
+  * debian/: Multi-Arch support added
+  * debian/copyright: DEP-5 compliance
+  * debian/control: Standards-Version bumped to 3.9.3
+
+ -- Matteo F. Vescovi <mfv.debian@gmail.com>  Thu, 23 Feb 2012 14:52:23 +0100
+
+babl (0.0.22-2) unstable; urgency=low
+
+  * debian/control: maintainer changed
+  * debian/control: debug package added (Closes: #503674)
+  * debian/control: dbg's Priority field set
+  * debian/watch: config file added
+  * debian/control: bump Standards-Version to 3.9.2
+  * debian/: bump debhelper support to 8 and compliance
+  * Acknowledgement for 0.0.22-1.1 NMU (Thanks Gregor!)
+  * babl/babl-model.c: upstream file restored
+  * debian/patches/: providing patching infrastructure
+  * debian/source/: providing 3.0 (quilt) support
+
+ -- Matteo F. Vescovi <mfv.debian@gmail.com>  Tue, 07 Feb 2012 14:56:25 +0100
+
+babl (0.0.22-1.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fix "FTBFS: babl-model.c:49:7: error: format not a string literal
+    and no format arguments [-Werror=format-security]": add patch from Bart
+    Martens (closes: #643356).
+
+ -- gregor herrmann <gregoa@debian.org>  Sat, 15 Oct 2011 15:39:05 +0200
+
+babl (0.0.22-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Ross Burton <ross@debian.org>  Mon, 16 Jun 2008 11:32:54 +0100
+
+babl (0.0.20-1) unstable; urgency=low
+
+  * First upload to Debian (Closes: #451250)
+  * Initially based on packaging by Étienne Bersac <bersace03@laposte.net>.
+
+ -- Ross Burton <ross@debian.org>  Thu, 28 Feb 2008 08:41:14 +0000

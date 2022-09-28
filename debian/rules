@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,-O1 -Wl,-z,defs
+
+# Disable SSE2 except on amd64
+ifneq ($(DEB_HOST_ARCH_CPU),amd64)
+	sse_flags := -Denable-mmx=false -Denable-sse=false -Denable-sse2=false
+endif
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		$(sse_flags) \
+		-Denable-sse4_1=false \
+		-Denable-f16c=false
+
+override_dh_makeshlibs:
+	dh_makeshlibs -X/usr/lib/$(DEB_HOST_MULTIARCH)/babl-0.1/ -- -c4

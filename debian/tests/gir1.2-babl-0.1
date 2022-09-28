@@ -1,0 +1,14 @@
+#!/usr/bin/python3
+# Copyright 2020 Simon McVittie
+# SPDX-License-Identifier: MIT
+
+import os
+
+import gi
+gi.require_version('Babl', '0.1')
+
+from gi.repository import Babl
+
+if __name__ == '__main__':
+    triple = Babl.get_version()
+    assert tuple(triple) >= (0, 1)
