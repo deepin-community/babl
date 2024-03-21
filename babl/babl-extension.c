@@ -33,7 +33,6 @@
 #include "babl-base.h"
 
 #include <string.h>
-#include <stdarg.h>
 
 
 static Babl *babl_extension_current_extender = NULL;
@@ -176,7 +175,22 @@ dlsym (HLIB        handle,
 #include <windows.h>
 #define HLIB    HINSTANCE
 
-#define dlopen(a, b)    LoadLibrary (a)
+static HLIB
+LoadLibraryWrap (const char *filename)
+{
+  wchar_t *filename_utf16 = babl_convert_utf8_to_utf16 (filename);
+  HLIB module = NULL;
+
+  if (!filename_utf16)
+    return NULL;
+
+  module = LoadLibraryW (filename_utf16);
+
+  babl_free (filename_utf16);
+  return module;
+}
+
+#define dlopen(a, b)    LoadLibraryWrap (a)
 #define dlsym(l, s)     GetProcAddress (l, s)
 #define dlclose(l)      FreeLibrary (l)
 #define dlerror()       GetLastError ()
@@ -246,43 +260,51 @@ babl_extension_load (const char *path)
     }
 }
 
+struct dir_foreach_ctx
+{
+  const char **exclusion_patterns;
+};
+
+static void
+dir_foreach (const char *base_path,
+             const char *entry,
+             void       *user_data)
+{
+  struct dir_foreach_ctx *ctx = (struct dir_foreach_ctx*) user_data;
+
+  if (entry[0] != '.')
+    {
+      char       *path = NULL;
+      char       *extension;
+
+      path = babl_strcat (path, base_path);
+      path = babl_strcat (path, BABL_DIR_SEPARATOR);
+      path = babl_strcat (path, entry);
+
+      if ((extension = strrchr (entry, '.')) != NULL &&
+          !strcmp (extension, SHREXT))
+        {
+          int excluded = 0;
+          for (int i = 0; ctx->exclusion_patterns[i]; i++)
+            if (strstr (path, ctx->exclusion_patterns[i]))
+              excluded = 1;
+          if (!excluded)
+            babl_extension_load (path);
+        }
+
+      babl_free (path);
+    }
+}
+
 static void
 babl_extension_load_dir (const char *base_path,
                          const char **exclusion_patterns)
 {
-  DIR *dir;
+  struct dir_foreach_ctx ctx;
 
-  if ((dir = opendir (base_path)))
-    {
-      struct  dirent *dentry;
+  ctx.exclusion_patterns = exclusion_patterns;
 
-      while ((dentry = readdir (dir)) != NULL)
-        {
-          if (dentry->d_name[0] != '.')
-            {
-              char       *path = NULL;
-              char       *extension;
-
-              path = babl_strcat (path, base_path);
-              path = babl_strcat (path, BABL_DIR_SEPARATOR);
-              path = babl_strcat (path, dentry->d_name);
-
-              if ((extension = strrchr (dentry->d_name, '.')) != NULL &&
-                  !strcmp (extension, SHREXT))
-                {
-                  int excluded = 0;
-                  for (int i = 0; exclusion_patterns[i]; i++)
-                    if (strstr (path, exclusion_patterns[i]))
-                      excluded = 1;
-                  if (!excluded)
-                    babl_extension_load (path);
-                }
-
-              babl_free (path);
-            }
-        }
-      closedir (dir);
-    }
+  _babl_dir_foreach (base_path, dir_foreach, &ctx);
 }
 
 static char *
@@ -340,8 +362,8 @@ babl_extension_load_dir_list (const char *dir_list,
         {
           case '\0':
             eos = 1;
-            /* don't break here, the path needs to be processed */
-
+            // the path needs to be processed.
+            // fall through
           case BABL_PATH_SEPARATOR:
           {
             char *expanded_path = expand_path (path);

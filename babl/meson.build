@@ -90,6 +90,7 @@ babl_sources = files(
   'babl-sanity.c',
   'babl-space.c',
   'babl-type.c',
+  'babl-shared-util.c',
   'babl-util.c',
   'babl-version.c',
   'babl.c',
@@ -138,7 +139,7 @@ babl = library(
   link_args: babl_link_args,
   link_with: simd_extra,
   dependencies: babl_deps,
-  link_depends: version_script,
+  link_depends: version_script[0],
   version: so_version,
   install: true,
 )
@@ -146,16 +147,19 @@ babl = library(
 if build_gir
   # identity filter, so GIR doesn't choke on the Babl type
   # (since it has the same name as the Babl namespace)
-  babl_gir = gnome.generate_gir(babl,
+  babl_gir = gnome.generate_gir(
+    babl,
     sources: babl_headers,
     extra_args: [
-      '--identifier-filter-cmd=@0@ @1@'.format(python.path(), 
-        meson.current_source_dir() / 'identfilter.py'),
+      '--identifier-filter-cmd=@0@ @1@'.format(python.full_path(), 
+      '"' + meson.current_source_dir() / 'identfilter.py' + '"'),
       '-DBABL_IS_BEING_COMPILED',
+      '--quiet',
     ],
     namespace: 'Babl',
     nsversion: api_version,
     header: 'babl.h',
+    export_packages: 'babl-0.1',
     install: true,
   )
 
@@ -165,4 +169,6 @@ if build_gir
       install: true,
     )
   endif
+else
+  babl_gir = []
 endif

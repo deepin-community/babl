@@ -1,7 +1,7 @@
 project('babl', 'c',
   license: 'LGPL3+',
-  version: '0.1.92',
-  meson_version: '>=0.54.0',
+  version: '0.1.108',
+  meson_version: '>=0.55.0',
   default_options: [
     'buildtype=debugoptimized'
   ],
@@ -55,7 +55,7 @@ lib_name    = meson.project_name() + '-' + api_version
 stability_version_number = (major_version != 0 ? minor_version : micro_version)
 stable = (stability_version_number % 2 == 0)
 
-conf.set10('BABL_UNSTABLE', not stable, Description:
+conf.set10('BABL_UNSTABLE', not stable, description:
   'Define to 1 if this is an unstable version of BABL.')
 
 conf.set       ('BABL_MAJOR_VERSION',    '@0@'.format(major_version))
@@ -154,7 +154,7 @@ build_platform_win32 = (build_os.startswith('mingw') or
 # and have exe wrapper. If we don't need a wrapper (e.g. 32 bit build in
 # 64-bit environment) then set proprty has_exe_wrapper=true in cross 
 # file
-can_run_host_binaries = meson.has_exe_wrapper()
+can_run_host_binaries = meson.can_run_host_binaries()
 
 
 ################################################################################
@@ -430,6 +430,19 @@ else
   build_vapi = false
 endif
 
+gi_docgen = find_program('gi-docgen', required: get_option('gi-docgen'))
+if get_option('gi-docgen').auto()
+ build_gi_docgen = build_docs and build_gir and gi_docgen.found() and not meson.is_cross_build()
+else
+ build_gi_docgen = get_option('gi-docgen').enabled()
+
+ if build_gi_docgen and (not build_docs or not build_gir)
+   warning('-Dwith-docs=true and -Denable-gir=true are required to build gi-docgen documentation')
+   build_gi_docgen = false
+ endif
+endif
+
+
 ################################################################################
 # Configuration files
 
@@ -451,12 +464,13 @@ if git_bin.found() and run_command(
     git_bin,
     'rev-parse',
     '--is-inside-work-tree',
+    check: false,
 ).returncode() == 0
   git_version_h = vcs_tag(
     input : 'git-version.h.in',
     output: 'git-version.h',
     replace_string: '@BABL_GIT_VERSION@',
-    command: [ git_bin.path(), 'describe', '--always' ],
+    command: [ git_bin.full_path(), 'describe', '--always' ],
   )
 
   if not meson.is_subproject()
@@ -493,6 +507,7 @@ subdir('tools')
 if build_docs
   subdir('docs')
 endif
+subdir('bin')
 
 # Create README file from web page
 if w3m_bin.found() and build_docs
@@ -514,14 +529,22 @@ endif
 # pkg-config file
 pkgconfig.generate(
   babl,
-  filebase: 'babl',
+  filebase: 'babl-' + api_version,
   name: 'babl',
   description: 'Pixel encoding and color space conversion engine.',
   version: meson.project_version(),
   subdirs: lib_name,
+  variables: [
+    'datadir=${prefix}/share',
+    'pluginsdir=${libdir}/@0@'.format(lib_name),
+    'girdir=${datadir}/gir-1.0',
+    'typelibdir=${libdir}/girepository-1.0',
+  ],
   uninstalled_variables: [
-    'babl_path=@0@'.format(babl_extensions_build_dir),
-    'babl_libdir=@0@'.format(babl_library_build_dir),
+    'babl_libdir=${prefix}/babl',
+    'pluginsdir=${prefix}/extensions',
+    'girdir=${babl_libdir}',
+    'typelibdir=${babl_libdir}',
   ],
 )
 
@@ -531,13 +554,16 @@ babl_dep = declare_dependency(
   link_with : babl,
   sources: [
     babl_version_h,
-    is_variable('babl_gir') ? babl_gir : []
+    build_gir ? babl_gir : []
   ],
   variables: {
     'babl_path'   : babl_extensions_build_dir,
     'babl_libdir' : babl_library_build_dir,
+    'girdir'      : babl_library_build_dir,
+    'typelibdir'  : babl_library_build_dir,
   },
 )
+meson.override_dependency('babl-' + api_version, babl_dep)
 
 ################################################################################
 # Build summary
@@ -549,9 +575,10 @@ summary(
 )
 summary(
   {
-    'BABL docs'      : build_docs,
-    'Introspection'  : build_gir,
-    'VALA support'   : build_vapi,
+    'BABL docs (babl website)' : build_docs,
+    'gi-docgen'                : build_gi_docgen,
+    'Introspection'            : build_gir,
+    'VALA support'             : build_vapi,
   }, section: 'Optional features'
 )
 summary(

@@ -14,8 +14,12 @@ endif
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		$(sse_flags) \
+		-Dauto_features=enabled \
 		-Denable-sse4_1=false \
 		-Denable-f16c=false
 
 override_dh_makeshlibs:
 	dh_makeshlibs -X/usr/lib/$(DEB_HOST_MULTIARCH)/babl-0.1/ -- -c4
+
+override_dh_missing:
+	dh_missing -X/usr/bin

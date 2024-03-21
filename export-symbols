@@ -57,6 +57,7 @@ babl_space_to_icc
 babl_space_with_trc
 babl_space_is_cmyk
 babl_space_is_gray
+babl_space_is_rgb
 babl_space_get_gamma
 babl_icc_make_space
 babl_icc_get_key
@@ -72,6 +73,7 @@ babl_db_exist_by_id
 babl_db_each
 babl_formats_count
 babl_format_class_for_each
+babl_gc
 babl_model_class_for_each
 babl_type_class_for_each
 babl_conversion_class_for_each
