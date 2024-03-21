@@ -32,6 +32,8 @@
 #define MIN(a, b) (((a) > (b)) ? (b) : (a))
 #endif
 
+static int enable_lut = 0;
+
 typedef struct GcContext {
    long time;
 } GcContext;
@@ -106,8 +108,20 @@ babl_gc_fishes (void)
      fprintf (stdout, "\e[H\e[2J");
   }
   babl_fish_class_for_each (gc_fishes, &context);
-  //malloc_trim (0); 
-  //  is responsibility of higher layers
+}
+
+static long babl_conv_counter = 0;
+
+void
+babl_gc (void)
+{
+  if (babl_conv_counter > 1000 * 1000 * 10) // run gc every 10 megapixels
+  {
+    babl_conv_counter = 0;
+    babl_gc_fishes ();
+    //malloc_trim (0); 
+    //  is responsibility of higher layers
+  }
 }
 
 #define BABL_LIKELY(x)      __builtin_expect(!!(x), 1)
@@ -115,14 +129,43 @@ babl_gc_fishes (void)
 
 static float timings[256] = {0,};
 
-static inline void _do_lut (uint32_t *lut,
+#define BPP_4ASSOCIATED   14
+
+static inline int _do_lut (uint32_t *lut,
                            int   source_bpp,
                            int   dest_bpp,
                            const void *__restrict__ source,
                            void *__restrict__ destination,
                            long n)
 {
-        if (source_bpp == 4 && dest_bpp == 16)
+        if (source_bpp == BPP_4ASSOCIATED  && dest_bpp == 4)
+        {
+          uint32_t *src = (uint32_t*)source;
+          uint32_t *dst = (uint32_t*)destination;
+          while (n--)
+          {
+             uint32_t col = *src++;
+             uint8_t *rgba=(uint8_t*)&col;
+             uint8_t oalpha = rgba[3];
+             if (oalpha==0)
+             {
+               *dst++ = 0;
+             }
+             else
+             {
+               uint32_t col_opaque = col;
+               uint8_t *rgbaB=(uint8_t*)&col_opaque;
+               uint32_t ralpha = 0;
+               ralpha = (256*255)/oalpha;
+               rgbaB[0] = (rgba[0]*ralpha)>>8;
+               rgbaB[1] = (rgba[1]*ralpha)>>8;
+               rgbaB[2] = (rgba[2]*ralpha)>>8;
+               rgbaB[3] = 0;
+               *dst++ = lut[col_opaque] | (oalpha<<24);
+             }
+          }
+        }
+        else if (source_bpp == 4 && dest_bpp == 16)
         {
           uint32_t *src = (uint32_t*)source;
           uint32_t *dst = (uint32_t*)destination;
@@ -130,7 +173,7 @@ static inline void _do_lut (uint32_t *lut,
           {
              uint32_t col = *src++;
              uint32_t lut_offset = col & 0xffffff;
-             float alpha = (col>>24)/255.0;
+             float alpha = (col>>24)/255.0f;
 
              *dst++ = lut[lut_offset*4+0];
              *dst++ = lut[lut_offset*4+1];
@@ -148,7 +191,7 @@ static inline void _do_lut (uint32_t *lut,
           {
              uint32_t col = *src++;
              uint32_t lut_offset = col & 0xffffff;
-             uint16_t alpha = (col>>24) << 8;
+             uint16_t alpha = (col>>24) << 8; 
 
              dst[0] = lut16[lut_offset*2+0];
              dst[1] = lut16[lut_offset*2+1];
@@ -177,8 +220,7 @@ static inline void _do_lut (uint32_t *lut,
           while (n--)
           {
              uint32_t col = *src++;
-             *dst = col & 0xff000000;
-             *dst |= lut[col & 0xffffff];
+             *dst = (col & 0xff000000) | lut[col & 0xffffff];
              dst++;
           }
         }
@@ -188,8 +230,8 @@ static inline void _do_lut (uint32_t *lut,
           uint32_t *dst = (uint32_t*)destination;
           while (n--)
           {
-             *dst = lut[*src++];
-             dst++;
+            *dst = lut[*src++];
+            dst++;
           }
         }
         else if (source_bpp == 2 && dest_bpp == 2)
@@ -234,14 +276,17 @@ static inline void _do_lut (uint32_t *lut,
           uint32_t *dst = (uint32_t*)destination;
           while (n--)
           {
-             uint32_t col = src[0]*256*256+src[1]*256+src[2];
-             *dst = lut[col];
+             *dst = lut[src[0]*256*256+src[1]*256+src[2]];
              dst++;
              src+=3;
           }
         }
+        else
+        {
+          return 0;
+        }
+        return 1;
 }
-
 
 void babl_test_lut (uint32_t *lut,
              int   source_bpp,
@@ -267,7 +312,7 @@ static inline float lut_timing_for (int source_bpp, int dest_bpp)
 static void measure_timings(void)
 {
    int num_pixels = babl_get_num_path_test_pixels () * 1000;
-   int pairs[][2]={{4,4},{4,8},{3,4},{3,3},{2,4},{2,2},{1,4},{2,16},{4,16}};
+   int pairs[][2]={{4,4},{BPP_4ASSOCIATED,4},{4,8},{3,4},{3,3},{2,4},{2,2},{1,4},{2,16},{4,16}};
    uint32_t *lut = malloc (256 * 256 * 256 * 16);
    uint32_t *src = malloc (num_pixels * 16);
    uint32_t *dst = malloc (num_pixels * 16);
@@ -287,7 +332,7 @@ static void measure_timings(void)
    LUT_LOG("BABL_LUT_UNUSED_LIMIT=%.1f\n", lut_unused_minutes_limit);
 
    LUT_LOG("measuring lut timings          \n");
-   for (int p = 0; p < sizeof (pairs)/sizeof(pairs[0]);p++)
+   for (size_t p = 0; p < sizeof (pairs)/sizeof(pairs[0]);p++)
    {
      int source_bpp = pairs[p][0];
      int dest_bpp = pairs[p][1];
@@ -323,7 +368,7 @@ static inline int babl_fish_lut_process_maybe (const Babl *babl,
      int source_bpp = babl->fish_path.source_bpp;
      int dest_bpp = babl->fish_path.dest_bpp;
      uint32_t *lut = (uint32_t*)babl->fish_path.u8_lut;
-
+ 
 
      if (BABL_UNLIKELY(!lut && babl->fish.pixels >= 128 * 256))
      {
@@ -334,20 +379,21 @@ static inline int babl_fish_lut_process_maybe (const Babl *babl,
        {
          lut = malloc (256 * 256 * 256 * 4);
          for (int o = 0; o < 256 * 256 * 256; o++)
-           lut[o] = o;
+           lut[o] = o | 0xff000000;
          process_conversion_path (babl->fish_path.conversion_list,
                                   lut, 4,
                                   lut, 4,
                                   256*256*256);
          for (int o = 0; o < 256 * 256 * 256; o++)
            lut[o] = lut[o] & 0x00ffffff;
+
        }
        else if (source_bpp == 4 && dest_bpp == 16)
        {
          uint32_t *temp_lut = malloc (256 * 256 * 256 * 4);
          lut = malloc (256 * 256 * 256 * 16);
          for (int o = 0; o < 256 * 256 * 256; o++)
-           temp_lut[o] = o;
+           temp_lut[o] = o | 0xff000000;
          process_conversion_path (babl->fish_path.conversion_list,
                                   temp_lut, 4,
                                   lut, 16,
@@ -359,7 +405,7 @@ static inline int babl_fish_lut_process_maybe (const Babl *babl,
          uint32_t *temp_lut = malloc (256 * 256 * 256 * 4);
          lut = malloc (256 * 256 * 256 * 8);
          for (int o = 0; o < 256 * 256 * 256; o++)
-           temp_lut[o] = o;
+           temp_lut[o] = o | 0xff000000;
          process_conversion_path (babl->fish_path.conversion_list,
                                   temp_lut, 4,
                                   lut, 8,
@@ -408,8 +454,6 @@ static inline int babl_fish_lut_process_maybe (const Babl *babl,
                                   temp_lut, 3,
                                   lut, 4,
                                   256*256*256);
-         for (int o = 0; o < 256 * 256 * 256; o++)
-           lut[o] = lut[o] & 0x00ffffff;
          free (temp_lut);
        }
        else if (source_bpp == 2 && dest_bpp == 2)
@@ -438,8 +482,6 @@ static inline int babl_fish_lut_process_maybe (const Babl *babl,
                                   temp_lut, 2,
                                   lut, 4,
                                   256*256);
-         for (int o = 0; o < 256 * 256; o++)
-           lut[o] = lut[o] & 0x00ffffff;
          free (temp_lut);
        }
        else if (source_bpp == 2 && dest_bpp == 16)
@@ -468,8 +510,6 @@ static inline int babl_fish_lut_process_maybe (const Babl *babl,
                                   temp_lut, 1,
                                   lut, 4,
                                   256);
-         for (int o = 0; o < 256; o++)
-           lut[o] = lut[o] & 0x00ffffff;
          free (temp_lut);
        }
 
@@ -489,10 +529,19 @@ static inline int babl_fish_lut_process_maybe (const Babl *babl,
          lut = babl->fish_path.u8_lut;
        }
      }
+
      if (lut)
      {
-        _do_lut (lut, source_bpp, dest_bpp, source, destination, n);
-        BABL(babl)->fish_path.last_lut_use = babl_ticks ();
+       if (source_bpp == 4 && 
+           ((babl->conversion.source->format.model->flags &
+           BABL_MODEL_FLAG_ASSOCIATED)!=0))
+         source_bpp = BPP_4ASSOCIATED;
+
+       if (_do_lut (lut, source_bpp, dest_bpp, source, destination, n))
+       {
+         BABL(babl)->fish_path.last_lut_use = babl_ticks ();
+         return 1;
+       }
      }
      return 0;
 }
@@ -587,6 +636,20 @@ _babl_legal_error (void)
     debug_conversions = 1;
   else
     debug_conversions = 0;
+
+  env = getenv ("BABL_LUT");
+  if (env && env[0] != '\0')
+    enable_lut = atoi(getenv("BABL_LUT"));
+  else
+    enable_lut = 1;
+
+  { 
+    const uint32_t u32 = 1;
+    if ( *((char*)&u32) == 0)
+    {  /* disable use of LUTs if we are running on big endian */
+       enable_lut = 0;
+    }
+  }
 
   return error;
 }
@@ -935,30 +998,67 @@ _babl_fish_prepare_bpp (Babl *babl)
          babl_log ("-eeek{%i}\n", babl_dest->instance.class_type - BABL_MAGIC);
      }
 
+  if (enable_lut)
   {
-  int source_bpp = babl->fish_path.source_bpp;
-  int dest_bpp = babl->fish_path.dest_bpp;
-  if (//source->format.space != destination->format.space &&
-     (
-        (source_bpp == 2 && dest_bpp == 16)
-      ||(source_bpp == 4 && dest_bpp == 16)
-      ||(source_bpp == 4 && dest_bpp == 4)
-      ||(source_bpp == 4 && dest_bpp == 8)
-      ||(source_bpp == 3 && dest_bpp == 4)
-      ||(source_bpp == 2 && dest_bpp == 4)
-      ||(source_bpp == 2 && dest_bpp == 2)
-      ||(source_bpp == 1 && dest_bpp == 4)
-      ||(source_bpp == 3 && dest_bpp == 3)
+  int         source_bpp  = babl->fish_path.source_bpp;
+  int         dest_bpp    = babl->fish_path.dest_bpp;
+  const Babl *source_type = babl_format_get_type (babl_source,
+                                                  babl_format_get_n_components (babl_source) - 1);
+  const Babl *dest_type   = babl_format_get_type (babl_dest,
+                                                  babl_format_get_n_components (babl_dest) - 1);
+
+  int src_not_associated = ((babl->conversion.source->format.model->flags &
+          BABL_MODEL_FLAG_ASSOCIATED)==0);
+  int dest_not_associated = ((babl->conversion.destination->format.model->flags &
+          BABL_MODEL_FLAG_ASSOCIATED)==0);
+  if (
+      (babl->conversion.source->format.type[0]->bits < 32)       
+
+      && (  (   source_bpp == 2
+             && dest_bpp   == 16)
+
+          ||(   source_bpp  == 4
+             && dest_bpp    == 16
+             && source_type == babl_type_from_id (BABL_U8)
+             && dest_type   == babl_type_from_id (BABL_FLOAT)
+             && src_not_associated
+             && dest_not_associated)
+
+          ||(   source_bpp == 4
+             && dest_bpp   == 4
+             && dest_type  == source_type
+             && dest_not_associated)
+
+          ||(   source_bpp  == 4
+             && dest_bpp    == 8
+             && source_type == babl_type_from_id (BABL_U8)
+             && dest_type   == babl_type_from_id (BABL_U16)
+             && src_not_associated
+             && dest_not_associated)
+
+          ||(   source_bpp == 3
+             && dest_bpp   == 4)
+
+          ||(   source_bpp == 2
+             && dest_bpp   == 4)
+
+          ||(   source_bpp == 2
+             && dest_bpp   == 2)
+
+          ||(   source_bpp == 1
+             && dest_bpp   == 4)
+
+          ||(   source_bpp == 3
+             && dest_bpp   == 3)
       )
      )
   {
      // as long as the highest 8bit of the 32bit of a 4 byte input is ignored
      // (alpha) - and it is not an associated color model. A 24 bit LUT provides
-     // exact data. Thus this is valid for instance for "YA half"
-
-     if ((babl->conversion.source->format.type[0]->bits < 32 &&
-          (source_bpp < 4 
-         || (babl->conversion.source->format.model->flags & BABL_MODEL_FLAG_ASSOCIATED)==0)))
+     // exact data. 
+     // Note that we can only copy alpha from source to complete when
+     // types are matching expectations - the source_bpp/dest_bpp pairs have
+     // currently have built-in expectation for what type alpha is filled in
      {
        static int measured_timings = 0;
        float scaling = 10.0;
@@ -1227,13 +1327,7 @@ babl_fish_path_process (const Babl *babl,
   }
   else
   {
-    static long conv_counter = 0;
-    conv_counter+=n;
-    if (conv_counter > 1000 * 1000 * 10) // run gc every 10 megapixels
-    {
-      conv_counter = 0;
-      babl_gc_fishes ();
-    }
+    babl_conv_counter+=n;
   }
   process_conversion_path (babl->fish_path.conversion_list,
                            source,
@@ -1365,7 +1459,7 @@ babl_process_rows (const Babl *fish,
 #include <stdint.h>
 
 #define BABL_ALIGN 16
-static void inline *align_16 (unsigned char *ret)
+static inline void *align_16 (unsigned char *ret)
 {
   int offset = BABL_ALIGN - ((uintptr_t) ret) % BABL_ALIGN;
   ret = ret + offset;

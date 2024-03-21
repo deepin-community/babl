@@ -55,14 +55,13 @@
   };
 
 int
-main (int    argc,
-      char **argv)
+main (void)
 {
   putenv ("BABL_DEBUG_CONVERSIONS" "=" "1");
   putenv ("BABL_DEBUG_MISSING" "=" "1");
   babl_init ();
   
-  for (int i = 0; i < sizeof (fishes)/sizeof(fishes[0]);i ++)
+  for (size_t i = 0; i < sizeof (fishes)/sizeof(fishes[0]);i ++)
   {
     babl_fish (babl_format (fishes[i].from_format),
                babl_format (fishes[i].to_format));

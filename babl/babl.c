@@ -22,35 +22,9 @@
 
 static int ref_count = 0;
 
-#ifdef _WIN32
-static HMODULE libbabl_dll = NULL;
-
-/* Minimal DllMain that just stores the handle to this DLL */
-
-/* Avoid silly "no previous prototype" gcc warning */
-BOOL WINAPI
-DllMain (HINSTANCE hinstDLL,
-         DWORD     fdwReason,
-         LPVOID    lpvReserved);
-
-BOOL WINAPI
-DllMain (HINSTANCE hinstDLL,
-         DWORD     fdwReason,
-         LPVOID    lpvReserved)
-{
-  switch (fdwReason)
-    {
-      case DLL_PROCESS_ATTACH:
-        libbabl_dll = hinstDLL;
-        break;
-    }
-
-  return TRUE;
-}
-
-#else
+#ifndef _WIN32
 #define BABL_PATH              LIBDIR BABL_DIR_SEPARATOR BABL_LIBRARY
-#endif /* _WIN32 */
+#endif
 
 /*
  * Returns a list of directories if the environment variable $BABL_PATH
@@ -70,21 +44,16 @@ babl_dir_list (void)
     {
 #ifdef _WIN32
       /* Figure it out from the location of this DLL */
-      char *filename;
-      int filename_size;
-      char *sep1, *sep2;
-
       wchar_t w_filename[MAX_PATH];
+      char *filename = NULL;
+      char *sep1, *sep2;
       DWORD nSize = sizeof (w_filename) / sizeof ((w_filename)[0]);
 
-      if (GetModuleFileNameW (libbabl_dll, w_filename, nSize) == 0)
+      if (GetModuleFileNameW (get_libbabl_module (), w_filename, nSize) == 0)
         babl_fatal ("GetModuleFilenameW failed");
 
-      filename_size = WideCharToMultiByte (CP_UTF8, 0, w_filename, -1, NULL, 0,
-                                           NULL, NULL);
-      filename = babl_malloc (sizeof (char) * filename_size);
-      if (!WideCharToMultiByte (CP_UTF8, 0, w_filename, -1,
-                                filename, filename_size, NULL, NULL))
+      filename = babl_convert_utf16_to_utf8 (w_filename);
+      if (!filename)
         babl_fatal ("Converting module filename to UTF-8 failed");
 
       /* If the DLL file name is of the format
@@ -144,6 +113,7 @@ babl_init (void)
       babl_type_db ();
       babl_trc_class_init ();
       babl_space_class_init ();
+      _babl_legal_error ();
       babl_component_db ();
       babl_model_db ();
       babl_format_db ();

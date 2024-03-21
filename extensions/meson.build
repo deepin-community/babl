@@ -6,6 +6,7 @@ no_cflags = []
 babl_ext_dep = [
   math,
   thread,
+  lcms,
 ]
 
 # Include directories
@@ -46,6 +47,7 @@ extensions = [
   ['fast-float', no_cflags],
   ['half', no_cflags],
   ['float', no_cflags],
+  ['formats', no_cflags],
   ['gegl-fixups', no_cflags],
   ['gggl-lies', no_cflags],
   ['gggl-table-lies', no_cflags],

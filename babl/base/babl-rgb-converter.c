@@ -306,7 +306,8 @@ universal_nonlinear_rgb_u8_converter_sse2 (const Babl    *conversion,
   uint8_t *rgb_in_u8 = (void*)src_char;
   uint8_t *rgb_out_u8 = (void*)dst_char;
 
-  float rgba_out[4*samples];
+  // The alignment is necessary for SIMD intrinsics in babl_matrix_mul_vectorff_buf4_sse2()
+  float __attribute__ ((aligned (16))) rgba_out[4*samples];
 
   for (i = 0; i < samples; i++)
   {
@@ -357,7 +358,20 @@ universal_linear_rgb_nonlinear_converter_sse2 (const Babl    *conversion,
   float *rgba_in = (void*)src_char;
   float *rgba_out = (void*)dst_char;
 
-  babl_matrix_mul_vectorff_buf4_sse2 (matrixf, rgba_in, rgba_out, samples);
+  if (((uintptr_t) rgba_in & 0xF) == 0)
+    {
+      babl_matrix_mul_vectorff_buf4_sse2 (matrixf, rgba_in, rgba_out, samples);
+    }
+  else
+    {
+      /* babl_matrix_mul_vectorff_buf4_sse2() requires source pointer address
+       * to be 16-bytes aligned.
+       */
+      float __attribute__ ((aligned (16))) aligned_rgba_in[4 * 4 * samples];
+
+      memcpy (aligned_rgba_in, rgba_in, 4 * 4 * samples);
+      babl_matrix_mul_vectorff_buf4_sse2 (matrixf, aligned_rgba_in, rgba_out, samples);
+    }
 
   TRC_OUT(rgba_out, rgba_out);
 }

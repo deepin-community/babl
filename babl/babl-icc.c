@@ -361,10 +361,23 @@ icc_tag (ICC        *state,
      sign_t sign = icc_read (sign, TAG_COUNT_OFF + 4 + 12 * t);
      if (!strcmp (sign.str, tag))
      {
+        int off = icc_read (u32, TAG_COUNT_OFF + 4 + 12* t + 4);
+        int len = icc_read (u32, TAG_COUNT_OFF + 4 + 12* t + 4*2);
+
+        if (off + len > state->length || off < 0)
+        {
+          if (offset)
+            *offset = 0;
+          if (el_length)
+            *el_length = 0;
+           return 0; // broken input
+        }
+
         if (offset)
-          *offset = icc_read (u32, TAG_COUNT_OFF + 4 + 12* t + 4);
+          *offset = off;
         if (el_length)
-          *el_length = icc_read (u32, TAG_COUNT_OFF + 4 + 12* t + 4*2);
+          *el_length = len;
+
         return 1;
      }
   }
@@ -555,6 +568,7 @@ switch (trc->type)
       break;
     }
   case BABL_TRC_FORMULA_SRGB:
+  // fall through
   case BABL_TRC_FORMULA_CIE:
     {
       int lut_size = 512;
@@ -1079,10 +1093,10 @@ babl_space_from_icc (const char   *icc_data,
       }
       break;
     case BABL_ICC_INTENT_ABSOLUTE_COLORIMETRIC:
-      *error = "absolute colormetric not implemented";
+      *error = "absolute colorimetric not implemented";
       break;
     case BABL_ICC_INTENT_SATURATION:
-      *error = "absolute stauration not supported";
+      *error = "saturation not supported";
       break;
   }
 
@@ -1504,8 +1518,11 @@ ConvertUTF16toUTF8 (const UTF16   **sourceStart,
 	}
 	switch (bytesToWrite) { /* note: everything falls through. */
 	    case 4: *--target = (UTF8)((ch | byteMark) & byteMask); ch >>= 6;
+	    // fall through
 	    case 3: *--target = (UTF8)((ch | byteMark) & byteMask); ch >>= 6;
+	    // fall through
 	    case 2: *--target = (UTF8)((ch | byteMark) & byteMask); ch >>= 6;
+	    // fall through
 	    case 1: *--target =  (UTF8)(ch | firstByteMark[bytesToWrite]);
 	}
 	target += bytesToWrite;

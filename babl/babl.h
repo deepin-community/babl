@@ -636,6 +636,11 @@ void babl_space_get (const Babl *space,
  * @blue_luminance: (out) (optional): Location for the blue luminance factor.
  *
  * Retrieve the relevant RGB luminance constants for a babl space.
+ *
+ * Note: these luminance coefficients should only ever be used on linear data.
+ * If your input @space is non-linear, you should convert your pixel values to
+ * the linearized variant of @space before making any computation with these
+ * coefficients. See #83.
  */
 void
 babl_space_get_rgb_luminance (const Babl *space,
@@ -710,7 +715,28 @@ babl_space_from_rgbxyz_matrix (const char *name,
  */
 const char * babl_format_get_encoding (const Babl *babl);
 
+/**
+ * babl_space_is_rgb:
+ * @space:
+ *
+ * Returns: 1 if @space is RGB, 0 otherwise.
+ */
+int babl_space_is_rgb  (const Babl *space);
+
+/**
+ * babl_space_is_cmyk:
+ * @space:
+ *
+ * Returns: 1 if @space is CMYK, 0 otherwise.
+ */
 int babl_space_is_cmyk (const Babl *space);
+
+/**
+ * babl_space_is_gray:
+ * @space:
+ *
+ * Returns: 1 if @space is grayscale, 0 otherwise.
+ */
 int babl_space_is_gray (const Babl *space);
 
 typedef void (*BablFishProcess) (const Babl *babl, const char *src, char *dst, long n, void *data);
@@ -722,6 +748,18 @@ typedef void (*BablFishProcess) (const Babl *babl, const char *src, char *dst, l
  * base-level instrumentation.
  */
 BablFishProcess babl_fish_get_process (const Babl *babl);
+
+
+/**
+ * babl_gc: (skip)
+ *
+ * Do a babl fish garbage collection cycle, should only be called
+ * from the main thread with no concurrent babl processing in other
+ * threads in paralell.
+ *
+ * Since: babl-0.1.98
+ */
+void babl_gc (void);
 
 
 /* values below this are stored associated with this value, it should also be

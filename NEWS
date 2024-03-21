@@ -3,7 +3,36 @@ The NEWS file in the babl source tree is the source location for
 the news section both in the README and the webpage.
                                                                           -->
 
-2022-02-21 babl-0.1.90                                              </dt><dd>
+2024-02-09 babl-0.1.108                                             </dt><dd>
+"double" and "half" support in cli-tool, build fixes.
+                                                                    </dd><dt>
+2023-05-05 babl-0.1.106                                             </dt><dd>
+Disable LUTs on big-endian, fix to 1bpp->4bpp LUTs, faster startup by caching
+balanced RGB to XYZ matrices.
+                                                                    </dd><dt>
+2023-04-21 babl-0.1.104                                             </dt><dd>
+LUT code-paths re-enabled, some array overflow proofing.
+                                                                    </dd><dt>
+2023-02-25 babl-0.1.102                                             </dt><dd>
+Brown paper bag release - LUT code-paths now disabled by default.
+                                                                    </dd><dt>
+2023-02-20 babl-0.1.100                                             </dt><dd>
+Stop double processing with LUT+normal fishes.
+Support for non-ASCII characters in file paths on windows. Improved wrap build
+support. 
+                                                                    </dd><dt>
+2022-11-13 babl-0.1.98                                              </dt><dd>
+More robust bounds protection in ICC handling, avoid garbage collecting lookup
+tables in-line with processing.
+                                                                    </dd><dt>
+2022-08-23 babl-0.1.96                                              </dt><dd>
+Minor changes from 0.1.94, fixing build.
+                                                                    </dd><dt>
+2022-08-21 babl-0.1.94                                              </dt><dd>
+Fix of crash on non-aligned data for SIMD, add commandline tool, improve vala
+compatibility of introspection info.
+                                                                    </dd><dt>
+2022-03-22 babl-0.1.92                                              </dt><dd>
 Fixes for avoiding load of wrong SIMD extensions.
                                                                     </dd><dt>
 2022-02-21 babl-0.1.90                                              </dt><dd>
