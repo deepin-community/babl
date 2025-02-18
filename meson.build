@@ -1,6 +1,6 @@
 project('babl', 'c',
   license: 'LGPL3+',
-  version: '0.1.108',
+  version: '0.1.110',
   meson_version: '>=0.55.0',
   default_options: [
     'buildtype=debugoptimized'
@@ -110,11 +110,6 @@ platform_win32 = (host_os.startswith('mingw') or
                   host_os.startswith('windows'))
 
 platform_osx = host_os.startswith('darwin')
-if platform_osx
-  if cc.get_id() != 'clang'
-    error('You should use Clang/Clang++ on OSX.')
-  endif
-endif
 
 platform_android = host_os.contains('android')
 
@@ -161,10 +156,8 @@ can_run_host_binaries = meson.can_run_host_binaries()
 # Compiler arguments
 
 common_c_flags = []
+common_l_flags = []
 
-if buildtype == 'debugoptimized' or buildtype == 'release'
-  common_c_flags += cc.get_supported_arguments(['-Ofast'])
-endif
 common_c_flags += cc.get_supported_arguments(
   ['-fno-unsafe-math-optimizations','-ftree-vectorize']
 )
@@ -179,6 +172,22 @@ extra_warnings_list = [
   '-Wpointer-arith',
 ]
 common_c_flags += cc.get_supported_arguments(extra_warnings_list)
+
+# Generate .pdb (CodeView) debug symbols (makes possible to debug with DIA SDK)
+#pdb_support = cc.has_argument('-gcodeview') and cc.has_link_argument('-Wl,--pdb=')
+#if platform_win32 and pdb_support
+#  common_c_flags += '-gcodeview'
+#  common_l_flags += '-Wl,--pdb='
+#endif
+
+if platform_win32 and cc.get_id() == 'clang'
+  # Optimize DWARF symbols to Dr. Mingw
+  # https://github.com/jrfonseca/drmingw/issues/42
+  common_c_flags += '-gdwarf-aranges'
+  # Workaround to get colored output
+  # https://github.com/msys2/MINGW-packages/issues/2988
+  common_c_flags += '-fansi-escape-codes'
+endif
 
 add_project_arguments(common_c_flags, language: 'c')
 
@@ -200,8 +209,10 @@ elif host_cpu_family == 'arm'
   arm_neon_flags = cc.get_supported_arguments(['-mfpu=neon-vfpv4'])
   arm_neon_flags += '-DARM_NEON'
 elif host_cpu_family == 'aarch64'
-  common_c_flags += cc.get_supported_arguments(['-mfpu=neon-fp-armv8'])
+  common_c_flags += cc.get_supported_arguments(['-mfpu=neon-fp-armv8', '-ftree-vectorize'])
 endif
+
+add_project_link_arguments(common_l_flags, language: 'c')
 
 ################################################################################
 # Check for compiler CPU extensions
@@ -324,7 +335,6 @@ endforeach
 # general
 check_functions = [
   ['HAVE_GETTIMEOFDAY', 'gettimeofday', '<sys/time.h>'],
-  ['HAVE_RINT',         'rint'        , '<math.h>'],
   ['HAVE_SRANDOM',      'srandom'     , '<stdlib.h>'],
 ]
 foreach func: check_functions
@@ -496,6 +506,15 @@ news_file = files('NEWS')
 todo_file = files('TODO')
 export_symbols_file = files('export-symbols')
 gen_babl_map_file = files('gen_babl_map.py')
+
+################################################################################
+# Install debug data (.pdb) on Windows
+# Ideally meson should take care of it automatically.
+# See: https://github.com/mesonbuild/meson/issues/12977
+#if platform_win32 and pdb_support
+#  install_win_debug_script = find_program('./meson_install_win_debug.sh')
+#  meson.add_install_script(install_win_debug_script)
+#endif
 
 ################################################################################
 # Subdirs
