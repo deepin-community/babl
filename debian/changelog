@@ -1,3 +1,10 @@
+babl (1:0.1.112-1) unstable; urgency=medium
+
+  * New upstream release
+  * Update libbabl-doc.doc-base
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Sun, 16 Mar 2025 14:39:04 -0400
+
 babl (1:0.1.110-1) unstable; urgency=medium
 
   * New upstream release.

@@ -1,5 +1,5 @@
 Tests: libbabl-dev
-Depends: build-essential, pkg-config, libbabl-dev
+Depends: build-essential, libbabl-dev, pkgconf
 Restrictions: allow-stderr, superficial
 
 Tests: gir1.2-babl-0.1
