@@ -1,2 +1,2 @@
-usr/lib/*/libbabl*.so.*
 usr/lib/*/babl-*/*.so
+usr/lib/*/libbabl*.so.*
