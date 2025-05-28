@@ -185,7 +185,7 @@ _babl_trc_formula_srgb_from_linear (const Babl *trc_,
   float e = trc->lut[5];
   float f = trc->lut[6];
 
-  if (x - f > c * d)  // XXX: verify that this math is the correct inverse
+  if (x - f > c * d)
   {
     float v = _babl_trc_gamma_from_linear ((Babl *) trc, x - f);
     v = (v-b)/a;
@@ -211,7 +211,7 @@ _babl_trc_formula_srgb_to_linear (const Babl *trc_,
   float e = trc->lut[5];
   float f = trc->lut[6];
 
-  if (x >= d)  // OPT can be reduced to be branchless
+  if (x >= d)
   {
     return _babl_trc_gamma_to_linear ((Babl *) trc, a * x + b) + e;
   }
@@ -411,6 +411,7 @@ BABL_SIMD_SUFFIX (babl_trc_new) (const char *name,
               int         n_lut,
               float      *lut);
 
+
 const Babl *
 BABL_SIMD_SUFFIX (babl_trc_new) (const char *name,
               BablTRCType type,
@@ -419,12 +420,15 @@ BABL_SIMD_SUFFIX (babl_trc_new) (const char *name,
               float      *lut)
 {
   int i=0;
-  static BablTRC trc;
+  BablTRC trc;
+  memset (&trc, 0, sizeof(trc));
   trc.instance.class_type = BABL_TRC;
   trc.instance.id         = 0;
   trc.type = type;
   trc.gamma  = gamma > 0.0    ? gamma       : 0.0;
   trc.rgamma = gamma > 0.0001 ? 1.0 / gamma : 0.0;
+  if(name)
+    strncpy (trc.name, name, sizeof (trc.name) - 1);
 
   if (n_lut )
   {
@@ -457,11 +461,11 @@ BABL_SIMD_SUFFIX (babl_trc_new) (const char *name,
   trc_db[i]=trc;
   trc_db[i].instance.name = trc_db[i].name;
   if (name)
-    snprintf (trc_db[i].name, sizeof (trc_db[i].name), "%s", name);
+    snprintf (trc_db[i].name, sizeof (trc_db[i].name) - 1, "%s", name);
   else if (n_lut)
-    snprintf (trc_db[i].name, sizeof (trc_db[i].name), "lut-trc");
+    snprintf (trc_db[i].name, sizeof (trc_db[i].name) - 1, "lut-trc");
   else
-    snprintf (trc_db[i].name, sizeof (trc_db[i].name), "trc-%i-%f", type, gamma);
+    snprintf (trc_db[i].name, sizeof (trc_db[i].name) - 1, "trc-%i-%f", type, gamma);
 
   if (n_lut)
   {

@@ -1,7 +1,7 @@
 project('babl', 'c',
   license: 'LGPL3+',
-  version: '0.1.112',
-  meson_version: '>=0.55.0',
+  version: '0.1.114',
+  meson_version: '>=0.57.0',
   default_options: [
     'buildtype=debugoptimized'
   ],
@@ -173,12 +173,12 @@ extra_warnings_list = [
 ]
 common_c_flags += cc.get_supported_arguments(extra_warnings_list)
 
-# Generate .pdb (CodeView) debug symbols (makes possible to debug with DIA SDK)
-#pdb_support = cc.has_argument('-gcodeview') and cc.has_link_argument('-Wl,--pdb=')
-#if platform_win32 and pdb_support
-#  common_c_flags += '-gcodeview'
-#  common_l_flags += '-Wl,--pdb='
-#endif
+# Generate native .pdb (CodeView) debug symbols (for DIA or DbgHelp debuggers and LLDB)
+pdb_support = cc.has_argument('-gcodeview') and cc.has_link_argument('-Wl,--pdb=')
+if platform_win32 and pdb_support
+  common_c_flags += '-gcodeview'
+  common_l_flags += '-Wl,--pdb='
+endif
 
 if platform_win32 and cc.get_id() == 'clang'
   # Optimize DWARF symbols to Dr. Mingw
@@ -397,7 +397,6 @@ vapigen   = dependency('vapigen', version:'>=0.20.0', required: false)
 git_bin = find_program('git', required: false, native: true)
 
 # docs
-env_bin = find_program('env', required: false, native: true)
 rsvg_convert_bin = find_program('rsvg-convert', required: false,
   native: true)
 w3m_bin = find_program('w3m', required: false, native: true)
@@ -407,12 +406,8 @@ w3m_bin = find_program('w3m', required: false, native: true)
 # Build flags
 
 # Docs - don't build by default in cross-build environments
-#        can't build if no env binary
 build_docs = true
-if get_option('with-docs') != 'false' and not env_bin.found()
-  build_docs = false
-  warning('env is required to build documentation')
-elif get_option('with-docs') == 'auto'
+if get_option('with-docs') == 'auto'
   if meson.is_cross_build()
     build_docs = false
     message(
@@ -488,9 +483,8 @@ if git_bin.found() and run_command(
       [ 'ninja', 'git-version.h', ],
     )
     meson.add_dist_script(
-      [ 'sh', '-c', ' '.join(
-      [ 'cp', git_version_h.full_path(), '${MESON_DIST_ROOT}' ]
-      )]
+      python, '-c',
+      'from pathlib import Path; from shutil import copy2; import sys, os; target_dir = Path(os.environ.get("MESON_DIST_ROOT")); target_dir.mkdir(parents=True, exist_ok=True); copy2(sys.argv[1], target_dir)', git_version_h.full_path()
     )
   endif
 else
@@ -511,10 +505,10 @@ gen_babl_map_file = files('gen_babl_map.py')
 # Install debug data (.pdb) on Windows
 # Ideally meson should take care of it automatically.
 # See: https://github.com/mesonbuild/meson/issues/12977
-#if platform_win32 and pdb_support
-#  install_win_debug_script = find_program('./meson_install_win_debug.sh')
-#  meson.add_install_script(install_win_debug_script)
-#endif
+if platform_win32 and pdb_support
+  install_win_debug_script = find_program('./meson_install_win_debug.py')
+  meson.add_install_script(install_win_debug_script)
+endif
 
 ################################################################################
 # Subdirs
