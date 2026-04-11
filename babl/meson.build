@@ -27,7 +27,7 @@ if cc.links('',
     name: '-Wl,--version-script', 
     args: ['-shared', '-Wl,--version-script=' 
       + meson.current_source_dir() / 'test-gnu.map']
-  )
+  ) and cc.get_argument_syntax() != 'msvc'
   babl_link_args = [
     '-Wl,--version-script=' + version_script[0].full_path()
   ]
@@ -45,6 +45,10 @@ elif cc.get_id() == 'clang'
     # Clang on msys/mingw
     babl_link_args = []
   endif
+elif cc.get_argument_syntax() == 'msvc'
+  babl_link_args = [
+    '/VERSION:' + api_version
+  ]
 else
   error(
     'Linker doesn\'t support --version-script or -exported_symbols_list'
@@ -122,12 +126,19 @@ babl_deps = [math, thread, dl, lcms, log]
 babl_includes = [rootInclude, bablBaseInclude]
 
 if host_cpu_family == 'x86_64'
-  simd_extra = [babl_base_x86_64_v2, babl_base_x86_64_v3]
+  simd_extra = [babl_base_x86_64_v2, babl_base_x86_64_v3, babl_base_x86_64_v4]
 elif host_cpu_family == 'arm'
   simd_extra = [babl_base_arm_neon]
 else
   simd_extra = []
 endif
+
+#Needed otherwise defcheck.py fails
+babl_def = configure_file(
+  input: 'babl.def',
+  output: 'babl.def',
+  copy: true
+)
 
 # build library
 babl = library(
@@ -135,6 +146,7 @@ babl = library(
   babl_sources,
   include_directories: babl_includes,
   c_args: babl_c_args,
+  vs_module_defs: babl_def,
   link_whole: babl_base,
   link_args: babl_link_args,
   link_with: simd_extra,

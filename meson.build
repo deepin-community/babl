@@ -1,7 +1,7 @@
 project('babl', 'c',
   license: 'LGPL3+',
-  version: '0.1.114',
-  meson_version: '>=0.57.0',
+  version: '0.1.124',
+  meson_version: '>=0.60.0',
   default_options: [
     'buildtype=debugoptimized'
   ],
@@ -28,7 +28,7 @@ prefix    = get_option('prefix')
 buildtype = get_option('buildtype')
 
 babl_prefix = get_option('prefix')
-babl_libdir = join_paths(babl_prefix, get_option('libdir'))
+babl_libdir = babl_prefix / get_option('libdir')
 
 project_build_root = meson.current_build_dir()
 project_source_root = meson.current_source_dir()
@@ -173,20 +173,42 @@ extra_warnings_list = [
 ]
 common_c_flags += cc.get_supported_arguments(extra_warnings_list)
 
-# Generate native .pdb (CodeView) debug symbols (for DIA or DbgHelp debuggers and LLDB)
-pdb_support = cc.has_argument('-gcodeview') and cc.has_link_argument('-Wl,--pdb=')
-if platform_win32 and pdb_support
-  common_c_flags += '-gcodeview'
-  common_l_flags += '-Wl,--pdb='
+
+# DEBUG SYMBOLS
+debugging_format = 'Disabled'
+if buildtype == 'debug' or buildtype == 'debugoptimized'
+  if not platform_win32
+    # DWARF symbols for GCC and LLDB on Unix
+    debugging_format = 'Native'
+  elif cc.get_argument_syntax() == 'msvc'
+    # CodeView symbols for DIA or DbgHelp debuggers and LLDB on Windows
+    debugging_format = 'Native'
+  elif platform_win32 and get_option('win-debugging') == 'native' and cc.has_argument('-gcodeview') and cc.has_link_argument('-Wl,--pdb=') and cc.get_id() == 'clang'
+    # CodeView symbols for DIA or DbgHelp debuggers and LLDB on Windows
+    debugging_format = 'Native'
+    common_c_flags += '-gcodeview'
+    common_l_flags += '-Wl,--pdb='
+  else
+    # DWARF symbols for GCC and LLDB on Windows (fallback)
+    debugging_format = 'DWARF'
+    if cc.get_id() == 'clang'
+      # Optimize DWARF symbols to Dr. Mingw
+      # https://github.com/jrfonseca/drmingw/issues/42
+      common_c_flags += '-gdwarf-aranges'
+    endif
+  endif
 endif
 
+
 if platform_win32 and cc.get_id() == 'clang'
-  # Optimize DWARF symbols to Dr. Mingw
-  # https://github.com/jrfonseca/drmingw/issues/42
-  common_c_flags += '-gdwarf-aranges'
   # Workaround to get colored output
   # https://github.com/msys2/MINGW-packages/issues/2988
   common_c_flags += '-fansi-escape-codes'
+endif
+
+if cc.get_argument_syntax() == 'msvc'
+  #Needed otherwise MSVC get angry with the headers provided by UCRT
+  common_c_flags += ['/D_USE_MATH_DEFINES']
 endif
 
 add_project_arguments(common_c_flags, language: 'c')
@@ -201,12 +223,14 @@ endif
 if host_cpu_family == 'x86_64'
   x86_64_v2_flags = cc.get_supported_arguments(['-march=x86-64','-msse2', '-msse2','-msse4.1','-msse4.2','-mpopcnt','-mssse3'])
   x86_64_v3_flags = x86_64_v2_flags + cc.get_supported_arguments(['-mavx','-mavx2','-mf16c','-mfma','-mmovbe', '-mbmi', '-mbmi2'])
+  x86_64_v4_flags = x86_64_v3_flags + cc.get_supported_arguments(['-mavx512f', '-mavx512cd', '-mavx512bw', '-mavx512vl', '-mavx512dq'])
 
   x86_64_v2_flags += '-DX86_64_V2'
   x86_64_v3_flags += '-DX86_64_V3'
+  x86_64_v4_flags += '-DX86_64_V4'
 
 elif host_cpu_family == 'arm'
-  arm_neon_flags = cc.get_supported_arguments(['-mfpu=neon-vfpv4'])
+  arm_neon_flags = cc.get_supported_arguments(['-mfpu=neon-vfpv3', '-mfpu=neon-vfpv4'])
   arm_neon_flags += '-DARM_NEON'
 elif host_cpu_family == 'aarch64'
   common_c_flags += cc.get_supported_arguments(['-mfpu=neon-fp-armv8', '-ftree-vectorize'])
@@ -376,14 +400,10 @@ g_ir = dependency('gobject-introspection-1.0', version: '>=1.32.0',
   required: false)
 
 # lcms
-if get_option('with-lcms')
-  lcms = dependency('lcms2', version: '>=2.8', required: true)
-  if lcms.found()
-    conf.set('HAVE_LCMS', 1, description:
-      'Define to 1 if liblcms2 is available')
-  endif
-else
-  lcms = declare_dependency()
+lcms = dependency('lcms2', version: '>=2.8', required: get_option('with-lcms'))
+if lcms.found()
+  conf.set('HAVE_LCMS', 1, description:
+    'Define to 1 if liblcms2 is available')
 endif
 
 # vapigen
@@ -447,6 +467,16 @@ else
  endif
 endif
 
+# Build relocatable babl
+relocatable = false
+if get_option('relocatable').auto()
+  if platform_win32 or platform_osx
+    relocatable = true
+  endif
+else
+  relocatable = get_option('relocatable').enabled()
+endif
+conf.set('ENABLE_RELOCATABLE', relocatable)
 
 ################################################################################
 # Configuration files
@@ -465,16 +495,22 @@ configure_file(
 # updated. If git is not available, don't do anything if git-version.h
 # already exists because then we are probably working with a tarball
 # in which case the git-version.h we ship is correct.
-if git_bin.found() and run_command(
-    git_bin,
-    'rev-parse',
-    '--is-inside-work-tree',
-    check: false,
+is_git_repository = run_command(python, '-c',
+  'import sys,os; sys.exit(0 if os.path.exists(".git") else 1)',
+  check: false
 ).returncode() == 0
+
+has_version_h = run_command(python, '-c',
+  'import sys,os; sys.exit(0 if os.path.exists("git-version.h") else 1)',
+  check: false
+).returncode() == 0
+
+if is_git_repository or not has_version_h
   git_version_h = vcs_tag(
     input : 'git-version.h.in',
     output: 'git-version.h',
     replace_string: '@BABL_GIT_VERSION@',
+    fallback: 'unknown (unsupported)',
     command: [ git_bin.full_path(), 'describe', '--always' ],
   )
 
@@ -487,6 +523,22 @@ if git_bin.found() and run_command(
       'from pathlib import Path; from shutil import copy2; import sys, os; target_dir = Path(os.environ.get("MESON_DIST_ROOT")); target_dir.mkdir(parents=True, exist_ok=True); copy2(sys.argv[1], target_dir)', git_version_h.full_path()
     )
   endif
+
+  if not is_git_repository or not git_bin.found()
+  # We create git-version.h but know it will be useless because we are
+  # not in a git repository. Output a warning.
+    git_warning = '''
+
+          UNSUPPORTED BUILD!
+
+          This is not a distribution tarball (git-version.h missing) and
+          we could not establish the corresponding commit (either this is
+          not a git repository or git command is missing). Therefore
+          we have no reference for debugging.
+          Please either use release tarballs or build from the repository.
+    '''
+    warning(git_warning)
+  endif
 else
   git_version_h = files('git-version.h')
 endif
@@ -498,14 +550,14 @@ xml_insert_file = files('tools' / 'xml-insert.py')
 authors_file = files('AUTHORS')
 news_file = files('NEWS')
 todo_file = files('TODO')
-export_symbols_file = files('export-symbols')
+export_symbols_file = files('babl/babl.def')
 gen_babl_map_file = files('gen_babl_map.py')
 
 ################################################################################
 # Install debug data (.pdb) on Windows
 # Ideally meson should take care of it automatically.
 # See: https://github.com/mesonbuild/meson/issues/12977
-if platform_win32 and pdb_support
+if platform_win32 and debugging_format == 'Native' and cc.get_argument_syntax() != 'msvc'
   install_win_debug_script = find_program('./meson_install_win_debug.py')
   meson.add_install_script(install_win_debug_script)
 endif
@@ -521,6 +573,24 @@ if build_docs
   subdir('docs')
 endif
 subdir('bin')
+
+if not platform_osx and host_cpu_family != 'x86'
+  # Verify .def files for Windows linking.
+  # We check this on non-Windows platform  on CI, and on Windows itself.
+  custom_target('check-def-files',
+    input: [
+      babl_def
+    ],
+    depends: [
+      babl
+    ],
+    output: [ 'check-def-files', ],
+    command: [
+      python, meson.project_source_root() / 'tools' / 'defcheck.py', '@INPUT@',
+    ],
+    build_by_default: true,
+  )
+endif
 
 # Create README file from web page
 if w3m_bin.found() and build_docs
@@ -592,6 +662,8 @@ summary(
     'gi-docgen'                : build_gi_docgen,
     'Introspection'            : build_gir,
     'VALA support'             : build_vapi,
+    'Debug symbols format'     : debugging_format,
+    'relocatable'              : relocatable,
   }, section: 'Optional features'
 )
 summary(
@@ -606,6 +678,6 @@ summary(
 )
 summary(
   {
-    'lcms' : get_option('with-lcms'),
+    'lcms' : lcms.found(),
   }, section: 'Optional dependencies'
 )

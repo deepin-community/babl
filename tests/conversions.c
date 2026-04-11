@@ -19,6 +19,10 @@
 #include "config.h"
 #include "babl-internal.h"
 
+#ifdef _WIN32
+#define putenv _putenv
+#endif
+
  static const struct 
   { 
     const char *from_format; 

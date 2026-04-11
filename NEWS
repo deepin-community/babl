@@ -3,6 +3,23 @@ The NEWS file in the babl source tree is the source location for
 the news section both in the README and the webpage.
                                                                           -->
 
+
+2026-03-10 babl-0.1.124                                             </dt><dd>
+DisplayP3 pre-defined colorspace, build and sanity improvements for CI and
+windows.
+                                                                    </dd><dt>
+2026-01-28 babl-0.1.122                                             </dt><dd>
+fix for startup crash due to mis-loading of x86_64-v4 on -v2 with some ports.
+                                                                    </dd><dt>
+2026-01-15 babl-0.1.120                                             </dt><dd>
+x86_64-v4 microarchitecture support.
+                                                                    </dd><dt>
+2025-12-08 babl-0.1.118                                             </dt><dd>
+build and portability fixes, babl is now relocatedable.
+                                                                    </dd><dt>
+2025-10-02 babl-0.1.116                                             </dt><dd>
+Many improvements for MSVC, and meson cleanups.
+                                                                    </dd><dt>
 2025-05-08 babl-0.1.114                                             </dt><dd>
 Fix to broken TRC cache for formula based TRCs in ICC profiles. BABL_ICC_INTENT_DEFAULT added. Some broken conversions removed.
                                                                     </dd><dt>

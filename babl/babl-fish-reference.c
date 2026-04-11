@@ -138,7 +138,11 @@ babl_fish_reference (const Babl *source,
   babl->class_type    = BABL_FISH_REFERENCE;
   babl->instance.id   = babl_fish_get_id (source, destination);
   babl->instance.name = ((char *) babl) + sizeof (BablFishReference);
+#ifndef _UCRT
   strcpy (babl->instance.name, name);
+#else
+  strcpy_s (babl->instance.name, strlen(name) + 1, name);
+#endif
   babl->fish.source      = source;
   babl->fish.destination = destination;
 
@@ -728,8 +732,7 @@ process_same_model (const Babl  *babl,
   }
 }
 
-typedef enum _Kind Kind;
-enum _Kind { KIND_RGB, KIND_CMYK};
+typedef enum _Kind { KIND_RGB, KIND_CMYK} Kind;
 
 static int format_has_cmyk_model (const Babl *format)
 {
@@ -1384,6 +1387,9 @@ babl_fish_reference_process (const Babl *babl,
 {
   static const void *type_float = NULL;
   static int allow_float_reference = -1;
+#ifdef _UCRT
+  char *env = NULL;
+#endif
 
   /* same format in source/destination */
   if (BABL (babl->fish.source) == BABL (babl->fish.destination))
@@ -1424,7 +1430,15 @@ babl_fish_reference_process (const Babl *babl,
     type_float = babl_type_from_id (BABL_FLOAT);
 
   if (allow_float_reference == -1)
-    allow_float_reference = getenv ("BABL_REFERENCE_NOFLOAT") ? 0 : 1;
+    {
+#ifndef _UCRT
+      allow_float_reference = getenv ("BABL_REFERENCE_NOFLOAT") ? 0 : 1;
+#else
+      _dupenv_s(&env, NULL, "BABL_REFERENCE_NOFLOAT");
+      allow_float_reference = env ? 0 : 1;
+      free(env);
+#endif
+    }
 
   /* both source and destination are either single precision float or <32bit component,
      we then do a similar to the double reference - using the first registered

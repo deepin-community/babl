@@ -8,10 +8,21 @@
 #define BABL_SIMD_x86_64_v3
 #define BABL_SIMD_SUFFIX(symbol) symbol##_x86_64_v3
 #else
+#ifdef X86_64_V4
+#define BABL_SIMD_x86_64_v4
+#define BABL_SIMD_SUFFIX(symbol) symbol##_x86_64_v4
+#else
 #define BABL_SIMD_generic
 #define BABL_SIMD_SUFFIX(symbol) symbol##_generic
 #endif
 #endif
+#endif
+
+/* Note: there is code-duplication in excluding babl extensions (.so/.dll/.dylib)
+to be loaded between this, and the list of exclusion substrings passed to the
+extension loading code. Compilers might use code making this early bail still
+fail with illegal instructions.
+ */
 
 #define BABL_VERIFY_CPU()  do{}while(0)
 
@@ -25,7 +36,9 @@
   if ((babl_cpu_accel_get_support() & BABL_CPU_ACCEL_X86_64_V2)\
                                        == BABL_CPU_ACCEL_X86_64_V2) return 0;\
   if ((babl_cpu_accel_get_support() & BABL_CPU_ACCEL_X86_64_V3)\
-                                       == BABL_CPU_ACCEL_X86_64_V3) return 0;
+                                       == BABL_CPU_ACCEL_X86_64_V3) return 0;\
+  if ((babl_cpu_accel_get_support() & BABL_CPU_ACCEL_X86_64_V4)\
+                                       == BABL_CPU_ACCEL_X86_64_V4) return 0;
 
 #endif
 
@@ -44,14 +57,25 @@
   if ((babl_cpu_accel_get_support() & BABL_CPU_ACCEL_X86_64_V2)\
                                        != BABL_CPU_ACCEL_X86_64_V2) return 0;\
   if ((babl_cpu_accel_get_support() & BABL_CPU_ACCEL_X86_64_V3)\
-                                       == BABL_CPU_ACCEL_X86_64_V3) return 0;
+                                       == BABL_CPU_ACCEL_X86_64_V3) return 0;\
+  if ((babl_cpu_accel_get_support() & BABL_CPU_ACCEL_X86_64_V4)\
+                                       == BABL_CPU_ACCEL_X86_64_V4) return 0;
 #endif
 
 #ifdef X86_64_V3
 #undef BABL_VERIFY_CPU
 #define BABL_VERIFY_CPU()\
   if ((babl_cpu_accel_get_support() & BABL_CPU_ACCEL_X86_64_V3)\
-                                       != BABL_CPU_ACCEL_X86_64_V3) return 0;
+                                       != BABL_CPU_ACCEL_X86_64_V3) return 0;\
+  if ((babl_cpu_accel_get_support() & BABL_CPU_ACCEL_X86_64_V4)\
+                                       == BABL_CPU_ACCEL_X86_64_V4) return 0;
+#endif
+
+#ifdef X86_64_V4
+#undef BABL_VERIFY_CPU
+#define BABL_VERIFY_CPU()\
+  if ((babl_cpu_accel_get_support() & BABL_CPU_ACCEL_X86_64_V4)\
+                                       != BABL_CPU_ACCEL_X86_64_V4) return 0;
 #endif
 
 

@@ -13,6 +13,7 @@
  * arg is ignored (i.e. same as always 1).
  */
 #define setenv(name,value,overwrite) _putenv_s(name, value)
+#define putenv _putenv
 #endif
 
 int
@@ -30,7 +31,12 @@ file_get_contents (const char  *path,
   long  size;
   char *buffer;
 
-  file = fopen (path,"rb");
+#ifndef _UCRT
+  file = fopen (path, "rb");
+#else
+  if (fopen_s (&file, path, "rb") != 0)
+    file = NULL;
+#endif
 
   if (!file)
     return -1;

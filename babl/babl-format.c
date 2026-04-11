@@ -21,6 +21,11 @@
 #include <stdarg.h>
 #include <math.h>
 
+#ifdef _WIN64
+#include <basetsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 #define NEEDS_BABL_DB
 #include "babl-internal.h"
 #include "babl-db.h"
@@ -99,7 +104,11 @@ format_new (const char      *name,
   babl->class_type  = BABL_FORMAT;
   babl->instance.id = id;
 
+#ifndef _UCRT
   strcpy (babl->instance.name, name);
+#else
+  strcpy_s (babl->instance.name, strlen(name) + 1, name);
+#endif
 
   babl->format.components = components;
 

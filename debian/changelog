@@ -1,3 +1,72 @@
+babl (1:0.1.124-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Sun, 15 Mar 2026 08:59:06 -0400
+
+babl (1:0.1.122-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Sat, 31 Jan 2026 16:47:27 -0500
+
+babl (1:0.1.120-2) unstable; urgency=medium
+
+  * Set -Denable-gir=true to fix cross building (Closes: #1126388)
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Tue, 27 Jan 2026 08:47:46 -0500
+
+babl (1:0.1.120-1) unstable; urgency=medium
+
+  * New upstream release
+  * Remove build fix patch: applied in new release
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Wed, 21 Jan 2026 13:08:28 -0500
+
+babl (1:0.1.118-2) unstable; urgency=medium
+
+  * Move Maintainer from Debian GNOME to Debian GNOME Extras
+  * Support nodoc build profile
+  * Bump Standards Version to 4.7.3
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Thu, 08 Jan 2026 09:45:44 -0500
+
+babl (1:0.1.118-1) unstable; urgency=medium
+
+  * New upstream release
+  * Cherry-pick patch to fix build
+  * Remove unnecessary Priority: optional field
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Sat, 13 Dec 2025 21:02:40 -0500
+
+babl (1:0.1.116-1) unstable; urgency=medium
+
+  * New upstream release
+  * debian/watch: Convert to Version: 5
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Mon, 06 Oct 2025 23:08:07 -0400
+
+babl (1:0.1.114-3) unstable; urgency=medium
+
+  * Team upload
+  * d/control: Replace libgirepository1.0-dev B-D with
+    gobject-introspection
+  * d/control, d/rules: Only run gi-docgen when building Architecture: all
+  * d/libbabl-doc.links: Register API reference with devhelp
+  * d/copyright: Stop quoting the FSF's former postal address here
+  * d/control: Remove unnecessary B-D on python3-setuptools
+  * d/salsa-ci.yml: Add
+  * d/control: Remove Rules-Requires-Root, unnecessary since trixie
+  * d/control: Standards-Version: 4.7.2 (no changes required)
+
+ -- Simon McVittie <smcv@debian.org>  Mon, 08 Sep 2025 09:18:33 +0100
+
+babl (1:0.1.114-2) unstable; urgency=medium
+
+  * Release to unstable
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Thu, 29 May 2025 08:23:23 -0400
+
 babl (1:0.1.114-1) experimental; urgency=medium
 
   * New upstream bugfix release
