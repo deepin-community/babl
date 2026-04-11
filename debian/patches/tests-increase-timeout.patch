@@ -12,10 +12,10 @@ https://buildd.debian.org/status/logs.php?pkg=babl&arch=armel
  1 file changed, 1 insertion(+)
 
 diff --git a/tests/meson.build b/tests/meson.build
-index eee8895..e131c14 100644
+index bdba7dc..2750da2 100644
 --- a/tests/meson.build
 +++ b/tests/meson.build
-@@ -51,5 +51,6 @@ foreach test_name : test_names
+@@ -52,5 +52,6 @@ foreach test_name : test_names
      test,
      env: test_env,
      workdir: meson.current_build_dir(),

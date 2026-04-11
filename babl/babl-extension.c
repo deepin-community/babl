@@ -64,7 +64,11 @@ extension_new (const char *path,
   babl                = babl_malloc (sizeof (BablExtension) + strlen (path) + 1);
   babl_set_destructor (babl, babl_extension_destroy);
   babl->instance.name = (char *) babl + sizeof (BablExtension);
+#ifndef _UCRT
   strcpy (babl->instance.name, path);
+#else
+  strcpy_s (babl->instance.name, strlen(path) + 1, path);
+#endif
   babl->instance.id         = 0;
   babl->class_type          = BABL_EXTENSION;
   babl->extension.dl_handle = dl_handle;
@@ -126,10 +130,14 @@ babl_extension_deinit (void)
 
 #ifdef BABL_DYNAMIC_EXTENSIONS
 
+#ifndef _WIN32
 #include <dirent.h>
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 #ifdef HAVE_DLFCN_H
 #ifndef WIN32
@@ -317,13 +325,21 @@ expand_path (char *path)
 
   src = path;
 
+#ifdef _WIN32
+  return babl_strdup (path);
+#endif
+
   while (*src)
     {
-      char *home;
+      char *home = NULL;
       switch (*src)
         {
           case '~':
+#ifndef _UCRT
             home = getenv ("HOME");
+#else
+            _dupenv_s (&home, NULL, "HOME");
+#endif
             if (NULL != home)
               dst = babl_strcat (dst, home);
             break;

@@ -19,6 +19,14 @@ option('gi-docgen',
   value: 'auto',
   description: 'Build developer documentation (uses gi-docgen)'
 )
+option('win-debugging',
+  type: 'combo',
+  choices: ['native', 'dwarf'],
+  value: 'native',
+  description: 'Build with native/CodeView debug symbols or with DWARF'
+)
+option('relocatable', type: 'feature', value: 'auto',
+       description: 'build with resources considered bundled under the same prefix (auto: platform defaults)')
 
 # Compiler extensions
 option('enable-mmx',
@@ -54,7 +62,7 @@ option('enable-f16c',
 
 # Optional dependencies
 option('with-lcms',
-  type: 'boolean',
-  value: true, 
+  type: 'feature',
+  value: 'auto', 
   description: 'build with lcms'
 )

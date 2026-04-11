@@ -26,16 +26,17 @@
 #include <sys/stat.h>
 #include "babl-internal.h"
 
-#ifdef __WIN32__
+#ifdef _WIN32
 #include <windows.h>
 #include <wchar.h>
+#include <io.h>
 #else
 #include <sys/time.h>
 #include <time.h>
 #include <dirent.h>
 #endif
 
-#ifdef __WIN32__
+#ifdef _WIN32
 static LARGE_INTEGER start_time;
 static LARGE_INTEGER timer_freq;
 
@@ -172,7 +173,12 @@ _babl_fopen (const char *path,
   wchar_t *mode_utf16 = babl_convert_utf8_to_utf16 (mode);
   FILE *result = NULL;
 
+#ifndef _UCRT
   result = _wfopen (path_utf16, mode_utf16);
+#else
+  if (_wfopen_s (&result, path_utf16, mode_utf16) != 0)
+    result = NULL;
+#endif
 
   if (path_utf16)
     babl_free (path_utf16);

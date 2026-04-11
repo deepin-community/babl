@@ -27,6 +27,19 @@
 #include "git-version.h"
 
 #ifdef _WIN32
+#ifndef S_IRWXU
+  #define S_IRWXU 0000700
+#endif
+#if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
+  #define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
+#endif
+#if !defined(S_ISDIR) && defined(S_IFMT) && defined(S_IFDIR)
+  #define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
+#endif
+#define strtok_r strtok_s
+#endif
+
+#ifdef _WIN32
 #define FALLBACK_CACHE_PATH  "C:/babl-fishes.txt"
 #else
 #define FALLBACK_CACHE_PATH  "/tmp/babl-fishes.txt"
@@ -102,6 +115,7 @@ fish_cache_path (void)
 #else
 
   wchar_t *appdata_utf16 = NULL;
+  char    *env           = NULL;
 
   if (SHGetKnownFolderPath (&FOLDERID_LocalAppData, KF_FLAG_DEFAULT, NULL, &appdata_utf16) == S_OK)
     {
@@ -119,10 +133,15 @@ fish_cache_path (void)
       if (appdata)
         babl_free (appdata);
     }
-  else if (getenv ("TEMP"))
+#ifdef _UCRT
+  else if (_dupenv_s(&env, NULL, "TEMP") == 0 && env != NULL)
+#else
+  else if (getenv("TEMP"))
+#endif
     {
-      snprintf (buf, sizeof (buf), "%s\\babl-fishes.txt", getenv("TEMP"));
+      snprintf (buf, sizeof (buf), "%s\\babl-fishes.txt", env);
       path = babl_strdup (buf);
+      free (env);
     }
 
   if (appdata_utf16)
@@ -290,9 +309,16 @@ babl_init_db (void)
   char *tokp;
   const Babl  *from_format = NULL;
   const Babl  *to_format   = NULL;
-  time_t tim = time (NULL);
+  time_t       tim         = time (NULL);
+  char        *env         = NULL;
 
-  if (getenv ("BABL_DEBUG_CONVERSIONS"))
+#ifndef _UCRT
+  env = getenv ("BABL_DEBUG_CONVERSIONS");
+#else
+  _dupenv_s (&env, NULL, "BABL_DEBUG_CONVERSIONS");
+#endif
+
+  if (env)
     goto cleanup;
 
   _babl_file_get_contents (path, &contents, &length, NULL);
@@ -359,7 +385,11 @@ babl_init_db (void)
               babl->instance.id      = babl_fish_get_id (from_format,
                                                          to_format);
               babl->instance.name    = ((char *) babl) + sizeof (BablFish);
+#ifndef _UCRT
               strcpy (babl->instance.name, name);
+#else
+              strcpy_s (babl->instance.name, strlen(name) + 1, name);
+#endif
               babl->fish.source      = from_format;
               babl->fish.destination = to_format;
               babl->fish.data        = (void*) 1; /* signals babl_fish() to
@@ -377,7 +407,11 @@ babl_init_db (void)
               babl->class_type     = BABL_FISH_PATH;
               babl->instance.id    = babl_fish_get_id (from_format, to_format);
               babl->instance.name  = ((char *) babl) + sizeof (BablFishPath);
+#ifndef _UCRT
               strcpy (babl->instance.name, name);
+#else
+              strcpy_s (babl->instance.name, strlen(name) + 1, name);
+#endif
               babl->fish.source               = from_format;
               babl->fish.destination          = to_format;
               babl->fish_path.conversion_list = babl_list_init_with_size (10);

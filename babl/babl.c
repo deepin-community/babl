@@ -16,6 +16,15 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+#include <errno.h>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+#ifdef __APPLE__
+#include <dlfcn.h>
+#include <libgen.h>
+#endif
+
 #include "config.h"
 #include "babl-internal.h"
 #include "babl-base.h"
@@ -24,6 +33,11 @@ static int ref_count = 0;
 
 #ifndef _WIN32
 #define BABL_PATH              LIBDIR BABL_DIR_SEPARATOR BABL_LIBRARY
+#endif
+
+#if !defined(_WIN32) && !defined(__APPLE__)
+static char * _babl_find_relocatable_exe (void);
+static char * _babl_guess_libdir         (void);
 #endif
 
 /*
@@ -37,12 +51,42 @@ static int ref_count = 0;
 static char *
 babl_dir_list (void)
 {
-  char *ret;
+  char *ret = NULL;
 
+#ifndef _UCRT
   ret = getenv ("BABL_PATH");
+#else
+  _dupenv_s (&ret, NULL, "BABL_PATH");
+#endif
+
   if (!ret)
     {
-#ifdef _WIN32
+#if defined(__APPLE__)
+      Dl_info info;
+      /* The checked symbol must be exported in the libbabl*.dylib */
+      if (dladdr((const void *)babl_dir_list, &info) && info.dli_fname)
+        {
+          char  dylib_path[PATH_MAX];
+          char *dylib_dir;
+          char *babl_dir;
+  
+          /* Get the parent directory containing the .dylib (e.g. <foobar>\Frameworks\,
+             does not matter the parent dir, this is packaging-agnostic) */
+          strlcpy(dylib_path, info.dli_fname, sizeof(dylib_path));
+          dylib_dir = dirname(dylib_path);
+          
+          /* Construct the babl dir on the parent dir (e.g. <foobar>\Frameworks\{BABL_LIBRARY}) */
+          babl_dir = babl_malloc(strlen(dylib_dir) + strlen(BABL_DIR_SEPARATOR) +
+                                 strlen(BABL_LIBRARY) + 1);
+          sprintf(babl_dir, "%s%s%s", dylib_dir, BABL_DIR_SEPARATOR, BABL_LIBRARY);
+          
+          ret = babl_dir;
+        }
+      else
+        {
+          babl_fatal ("Getting module path for relocatibility failed");
+        }
+#elif defined(_WIN32)
       /* Figure it out from the location of this DLL */
       wchar_t w_filename[MAX_PATH];
       char *filename = NULL;
@@ -67,13 +111,13 @@ babl_dir_list (void)
       sep2 = strrchr (filename, BABL_DIR_SEPARATOR[0]);
       if (sep2 != NULL)
         {
-          if (strcasecmp (sep2 + 1, "bin") == 0)
+          if (_stricmp (sep2 + 1, "bin") == 0)
             {
               char* filename_tmp;
               *(++sep2) = '\0';
               filename_tmp = babl_malloc (sizeof (char) * (strlen (filename) +
                                 strlen (BABL_DIR_SEPARATOR BABL_LIBRARY) + 4));
-              strcpy (filename_tmp, filename);
+              strcpy_s (filename_tmp, strlen(filename) + 1, filename);
               babl_free (filename);
               strcat (filename_tmp, "lib" BABL_DIR_SEPARATOR BABL_LIBRARY);
               filename = filename_tmp;
@@ -82,16 +126,97 @@ babl_dir_list (void)
 
       ret = filename;
 #else
-      ret = babl_malloc (sizeof (char) * (strlen (BABL_PATH) + 1));
-      strcpy (ret, BABL_PATH);
+      char *exe;
+
+      exe = _babl_find_relocatable_exe ();
+      if (exe)
+        {
+          char   *sep1, *sep2;
+          size_t  len;
+
+          len   = strlen (exe);
+          sep1  = strrchr (exe, BABL_DIR_SEPARATOR[0]);
+          *sep1 = '\0';
+
+          sep2 = strrchr (exe, BABL_DIR_SEPARATOR[0]);
+          if (sep2 != NULL)
+            {
+              while (strcmp (sep2 + 1, "bin") != 0 &&
+                     strstr (sep2 + 1, "lib") != sep2 + 1)
+                {
+                  *sep2 = '\0';
+                  sep2  = strrchr (exe, BABL_DIR_SEPARATOR[0]);
+
+                  if (sep2 == NULL)
+                    break;
+                }
+
+              if (sep2 == NULL)
+                {
+                  while (strlen (exe) < len)
+                    exe[strlen (exe)] = BABL_DIR_SEPARATOR[0];
+
+                  /* This may happen when babl is loaded by uninstalled
+                   * binaries, such as build-time tools, in which case, this is
+                   * not an error, and we fallback to the build-time BABL_PATH.
+                   * We assume that relocatable builds are not relocated during
+                   * the build of a full bundle.
+                   * This is why we output a message on stderr, but this is not
+                   * a fatal error.
+                   */
+                  fprintf (stderr,
+                           "Relocatable builds require the executable to be installed in bin/ or lib*/ unlike: %s\n"
+                           "If this is a build-time tool, you may ignore this message.\n",
+                           exe);
+                  babl_free (exe);
+                  exe = NULL;
+                }
+              else
+                {
+                  char *tmp;
+                  char *libdir = _babl_guess_libdir ();
+
+                  *(++sep2) = '\0';
+                  tmp = babl_malloc (sizeof (char) * (strlen (exe)                +
+                                                      strlen (libdir)             +
+                                                      strlen (BABL_DIR_SEPARATOR) +
+                                                      strlen (BABL_LIBRARY) + 1));
+                  strcpy (tmp, exe);
+                  babl_free (exe);
+                  strcat (tmp, libdir);
+                  babl_free (libdir);
+                  strcat (tmp, BABL_DIR_SEPARATOR BABL_LIBRARY);
+                  exe = tmp;
+                }
+            }
+          else
+            {
+              babl_free (exe);
+              exe = NULL;
+            }
+
+          ret = exe;
+        }
+
+      if (! ret)
+        {
+          ret = babl_malloc (sizeof (char) * (strlen (BABL_PATH) + 1));
+          strcpy (ret, BABL_PATH);
+        }
 #endif
     }
   else
     {
       char* ret_tmp = babl_malloc (sizeof (char) * (strlen (ret) + 1));
+
+#ifndef _UCRT
       strcpy (ret_tmp, ret);
+#else
+      strcpy_s (ret_tmp, strlen (ret) + 1, ret);
+#endif
       ret = ret_tmp;
     }
+
   return ret;
 }
 
@@ -101,6 +226,8 @@ void
 babl_init (void)
 {
   const char **exclusion_pattern;
+  char* env = NULL;
+
   babl_cpu_accel_set_use (1);
   exclusion_pattern = simd_init ();
 
@@ -129,8 +256,16 @@ babl_init (void)
       babl_extension_load_dir_list (dir_list, exclusion_pattern);
       babl_free (dir_list);
 
-      if (!getenv ("BABL_INHIBIT_CACHE"))
+#ifndef _UCRT
+      env = getenv ("BABL_INHIBIT_CACHE");
+#else
+      _dupenv_s (&env, NULL, "BABL_INHIBIT_CACHE");
+#endif
+      if (!env)
         babl_init_db ();
+#ifdef _UCRT
+      free (env);
+#endif
     }
 }
 
@@ -196,13 +331,17 @@ const Babl *
 #ifdef ARCH_X86_64
 void babl_base_init_x86_64_v2 (void);
 void babl_base_init_x86_64_v3 (void);
+void babl_base_init_x86_64_v4 (void);
 void _babl_space_add_universal_rgb_x86_64_v2 (const Babl *space);
 void _babl_space_add_universal_rgb_x86_64_v3 (const Babl *space);
+void _babl_space_add_universal_rgb_x86_64_v4 (const Babl *space);
 
 const Babl *
 babl_trc_lookup_by_name_x86_64_v2 (const char *name);
 const Babl *
 babl_trc_lookup_by_name_x86_64_v3 (const char *name);
+const Babl *
+babl_trc_lookup_by_name_x86_64_v4 (const char *name);
 
 const Babl *
 babl_trc_new_x86_64_v2 (const char *name,
@@ -212,6 +351,12 @@ babl_trc_new_x86_64_v2 (const char *name,
                         float      *lut);
 const Babl *
 babl_trc_new_x86_64_v3 (const char *name,
+                        BablTRCType type,
+                        double      gamma,
+                        int         n_lut,
+                        float      *lut);
+const Babl *
+babl_trc_new_x86_64_v4 (const char *name,
                         BablTRCType type,
                         double      gamma,
                         int         n_lut,
@@ -236,12 +381,22 @@ babl_trc_new_arm_neon (const char *name,
 
 static const char **simd_init (void)
 {
-  static const char *exclude[] = {"neon-", "x86-64-v3", "x86-64-v2", NULL};
+  static const char *exclude[] = {"neon-", "x86-64-v4", "x86-64-v3", "x86-64-v2", NULL};
 #ifdef ARCH_X86_64
   BablCpuAccelFlags accel = babl_cpu_accel_get_support ();
-  if ((accel & BABL_CPU_ACCEL_X86_64_V3) == BABL_CPU_ACCEL_X86_64_V3)
+  if ((accel & BABL_CPU_ACCEL_X86_64_V4) == BABL_CPU_ACCEL_X86_64_V4)
   {
-    static const char *exclude[] = {NULL};
+    static const char *exclude[] = {"x86-64-v3-", "x86-64-v2", NULL};
+    // TODO : make use of actual builds for this arch
+    babl_base_init = babl_base_init_x86_64_v2;
+    babl_trc_new = babl_trc_new_x86_64_v2;
+    babl_trc_lookup_by_name = babl_trc_lookup_by_name_x86_64_v2;
+    _babl_space_add_universal_rgb = _babl_space_add_universal_rgb_x86_64_v3;
+    return exclude;
+  }
+  else if ((accel & BABL_CPU_ACCEL_X86_64_V3) == BABL_CPU_ACCEL_X86_64_V3)
+  {
+    static const char *exclude[] = {"x86-64-v4-", "x86-64-v2-", NULL};
     babl_base_init = babl_base_init_x86_64_v2; /// !!
                                                // this is correct,
                                                // it performs better
@@ -253,7 +408,7 @@ static const char **simd_init (void)
   }
   else if ((accel & BABL_CPU_ACCEL_X86_64_V2) == BABL_CPU_ACCEL_X86_64_V2)
   {
-    static const char *exclude[] = {"x86-64-v3-", NULL};
+    static const char *exclude[] = {"x86-64-v3-", "x86-64-v4-", NULL};
     babl_base_init = babl_base_init_x86_64_v2;
     babl_trc_new = babl_trc_new_x86_64_v2;
     babl_trc_lookup_by_name = babl_trc_lookup_by_name_x86_64_v2;
@@ -262,7 +417,7 @@ static const char **simd_init (void)
   }
   else
   {
-    static const char *exclude[] = {"x86-64-v3-", "x86-64-v2-", NULL};
+    static const char *exclude[] = {"x86-64-v4-", "x86-64-v3-", "x86-64-v2-", NULL};
     return exclude;
   }
 #endif
@@ -286,3 +441,147 @@ static const char **simd_init (void)
   return exclude;
 }
 
+
+/* Private functions */
+#if !defined(_WIN32) && !defined(__APPLE__)
+static char *
+_babl_find_relocatable_exe (void)
+{
+#if ! defined(ENABLE_RELOCATABLE) || defined(_WIN32) || defined(__APPLE__)
+  return NULL;
+#else
+  char   *path;
+  char   *sym_path;
+  FILE   *file;
+  char   *maps_line      = NULL;
+  size_t  maps_line_size = 0;
+
+  sym_path = babl_strdup ("/proc/self/exe");
+
+  while (1)
+    {
+      size_t      bufsiz;
+      ssize_t     nbytes;
+      struct stat stat_buf;
+
+#ifdef PATH_MAX
+#define BABL_PATH_MAX PATH_MAX
+#else
+#define BABL_PATH_MAX 4096
+#endif
+
+      bufsiz = BABL_PATH_MAX;
+      path   = babl_malloc (bufsiz);
+      nbytes = readlink (sym_path, path, bufsiz);
+      /* Some systems actually allow paths of bigger size than PATH_MAX. Thus
+       * this macro is kind of bogus so we need to verify if we didn't get a
+       * truncated value.
+       * Other systems like Hurd will not even define it (see MR gimp!424).
+       */
+      while (nbytes == bufsiz && nbytes != -1)
+        {
+          /* The path was truncated. */
+          babl_free (path);
+          bufsiz += BABL_PATH_MAX;
+          path    = babl_malloc (bufsiz);
+
+          nbytes = readlink (sym_path, path, bufsiz);
+        }
+      babl_free (sym_path);
+
+#undef BABL_PATH_MAX
+
+      if (nbytes == -1)
+        {
+          babl_free (path);
+          path = NULL;
+          break;
+        }
+
+      /* Check whether the symlink's target is also a symlink.
+       * We want to get the final target.
+       */
+      if (stat (path, &stat_buf) == -1)
+        {
+          babl_free (path);
+          path = NULL;
+          break;
+        }
+
+      if (! S_ISLNK (stat_buf.st_mode))
+        return path;
+
+      /* path is a symlink. Continue loop and resolve this. */
+      sym_path = path;
+    }
+
+  /* readlink() or stat() failed; this can happen when the program is
+   * running in Valgrind 2.2.
+   * Read from /proc/self/maps as fallback.
+   */
+
+  file = _babl_fopen ("/proc/self/maps", "rb");
+
+  if (! file)
+    babl_fatal ("Failed to read /proc/self/maps: %s", strerror (errno));
+
+  /* The first entry with r-xp permission should be the executable name. */
+  while ((getline (&maps_line, &maps_line_size, file) != -1))
+    {
+      /* Extract the filename; it is always an absolute path. */
+      path = strchr (maps_line, '/');
+
+      /* Sanity check. */
+      if (path && strstr (maps_line, " r-xp "))
+        {
+          /* We found the executable name. */
+          path = babl_strdup (path);
+          break;
+        }
+
+      path = NULL;
+    }
+  free (maps_line);
+
+  fclose (file);
+
+  if (path == NULL)
+    babl_fatal ("Failed to find the executable's path for relocatability.");
+
+  return path;
+#endif
+}
+
+/* Returns the relative libdir, which may be lib/ or lib64/ or again
+ * some subdirectory with multiarch.
+ */
+static char *
+_babl_guess_libdir (void)
+{
+  char   *libdir;
+  char   *rel_libdir;
+  char   *sep;
+  size_t  len;
+
+  libdir = babl_strdup (LIBDIR);
+  len = strlen (libdir);
+
+  sep = strrchr (libdir, BABL_DIR_SEPARATOR[0]);
+  while (sep != NULL && strstr (sep + 1, "lib") != sep + 1)
+    {
+      *sep = '\0';
+      sep = strrchr (libdir, BABL_DIR_SEPARATOR[0]);
+    }
+
+  if (sep == NULL)
+    babl_fatal ("Relocatable builds require LIBDIR to start with 'lib' unlike: %s", LIBDIR);
+
+  while (strlen (libdir) < len)
+    libdir[strlen (libdir)] = BABL_DIR_SEPARATOR[0];
+
+  rel_libdir = babl_strdup (sep + 1);
+  babl_free (libdir);
+
+  return rel_libdir;
+}
+#endif

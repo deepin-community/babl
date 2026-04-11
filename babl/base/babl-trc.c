@@ -189,7 +189,7 @@ _babl_trc_formula_srgb_from_linear (const Babl *trc_,
   {
     float v = _babl_trc_gamma_from_linear ((Babl *) trc, x - f);
     v = (v-b)/a;
-    if (v < 0.0f || v >= 0.0f)
+    if (!isnan(v))
       return v;
     return 0.0f;
   }
@@ -231,7 +231,7 @@ _babl_trc_formula_cie_from_linear (const Babl *trc_,
   {
     float v = _babl_trc_gamma_from_linear ((Babl *) trc, x - c);
     v = (v-b)/a;
-    if (v < 0.0f || v >= 0.0f)
+    if (!isnan(v))
       return v;
   }
   return 0.0f;
@@ -428,7 +428,11 @@ BABL_SIMD_SUFFIX (babl_trc_new) (const char *name,
   trc.gamma  = gamma > 0.0    ? gamma       : 0.0;
   trc.rgamma = gamma > 0.0001 ? 1.0 / gamma : 0.0;
   if(name)
+#ifndef _UCRT
     strncpy (trc.name, name, sizeof (trc.name) - 1);
+#else
+    strncpy_s (trc.name, sizeof(trc.name), name, _TRUNCATE);
+#endif
 
   if (n_lut )
   {

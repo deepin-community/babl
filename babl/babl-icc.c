@@ -21,6 +21,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef _WIN32
+#define strdup _strdup
+#endif
+
 typedef struct ICC {
   char *data;
   int   length;

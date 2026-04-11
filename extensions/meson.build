@@ -20,6 +20,9 @@ babl_ext_link_args = [
 ]
 if platform_win32
   babl_ext_link_args += no_undefined
+  if cc.get_argument_syntax() == 'msvc'
+    babl_ext_link_args += '/EXPORT:init'
+  endif
 endif
 
 autosimd_extensions = [
@@ -70,8 +73,9 @@ extensions = [
   ['ycbcr', sse2_cflags],
 ]
 
+babl_extensions = []
 foreach ext : extensions
-  shared_library(
+  babl_extensions += shared_module(
     ext[0],
     ext[0] + '.c',
     c_args: [ext[1], '-DBABL_SIMDFREE' ],
@@ -88,7 +92,7 @@ endforeach
 if host_cpu_family == 'x86_64'
  
   foreach ext : autosimd_extensions
-    shared_library(
+    shared_module(
       'x86-64-v2-' + ext[0],
       ext[0] + '.c',
       c_args: [ext[1]] + x86_64_v2_flags,
@@ -103,10 +107,25 @@ if host_cpu_family == 'x86_64'
   endforeach
 
   foreach ext : autosimd_extensions
-    shared_library(
+    shared_module(
       'x86-64-v3-' + ext[0],
       ext[0] + '.c',
       c_args: [ext[1]] + x86_64_v3_flags,
+      include_directories: babl_ext_inc,
+      link_with: babl,
+      link_args: babl_ext_link_args,
+      dependencies: babl_ext_dep,
+      name_prefix: '',
+      install: true,
+      install_dir: babl_libdir / lib_name,
+   )
+  endforeach
+
+  foreach ext : autosimd_extensions
+    shared_module(
+      'x86-64-v4-' + ext[0],
+      ext[0] + '.c',
+      c_args: [ext[1]] + x86_64_v4_flags,
       include_directories: babl_ext_inc,
       link_with: babl,
       link_args: babl_ext_link_args,
@@ -121,7 +140,7 @@ elif host_cpu_family == 'arm'
   
 
   foreach ext : autosimd_extensions
-    shared_library(
+    shared_module(
       'arm-neon-' + ext[0],
       ext[0] + '.c',
       c_args: [ext[1]] + arm_neon_flags,
